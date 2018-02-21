@@ -9,4 +9,5 @@ org.fugerit.java.ext.doc.tlds
 org.fugerit.java.ext.doc.type
 org.fugerit.java.ext.doc.xml
 org.fugerit.java.ext.doc.xsl
+org.fugerit.java.ext.lang.helpers
 org.fugerit.java.ext.web.navmap.servlet
