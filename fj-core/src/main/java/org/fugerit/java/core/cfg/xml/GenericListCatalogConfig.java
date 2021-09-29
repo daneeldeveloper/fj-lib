@@ -20,6 +20,7 @@ import org.fugerit.java.core.lang.helpers.BooleanUtils;
 import org.fugerit.java.core.lang.helpers.ClassHelper;
 import org.fugerit.java.core.lang.helpers.StringUtils;
 import org.fugerit.java.core.util.collection.KeyObject;
+import org.fugerit.java.core.xml.XMLException;
 import org.fugerit.java.core.xml.config.XMLSchemaCatalogConfig;
 import org.fugerit.java.core.xml.dom.DOMIO;
 import org.fugerit.java.core.xml.dom.DOMUtils;
@@ -107,12 +108,12 @@ public class GenericListCatalogConfig<T> extends XMLConfigurableObject {
 	 * @param attTagData		attribute name to use for data entry
 	 */
 	public GenericListCatalogConfig( String attTagDataList, String attTagData ) {
-		this.dataMap = new HashMap<String, Collection<T>>();
+		this.dataMap = new HashMap<>();
 		this.attTagDataList = attTagDataList;
 		this.attTagData = attTagData;
 		this.generalProps = new Properties();
-		this.orderedId = new ConcurrentSkipListSet<String>();
-		this.entryIdCheck = new HashSet<String>();
+		this.orderedId = new ConcurrentSkipListSet<>();
+		this.entryIdCheck = new HashSet<>();
 	}
 
 	/**
@@ -228,10 +229,14 @@ public class GenericListCatalogConfig<T> extends XMLConfigurableObject {
 
 	private Set<String> entryIdCheck;
 	
-	public static <T> GenericListCatalogConfig<T> load( InputStream is, GenericListCatalogConfig<T> config ) throws Exception {
-		Document doc = DOMIO.loadDOMDoc( is, true );
-		Element root = doc.getDocumentElement();
-		config.configure( root );
+	public static <T> GenericListCatalogConfig<T> load( InputStream is, GenericListCatalogConfig<T> config ) throws ConfigException {
+		try {
+			Document doc = DOMIO.loadDOMDoc( is, true );
+			Element root = doc.getDocumentElement();
+			config.configure( root );
+		} catch (XMLException e) {
+			throw new ConfigException( e );
+		}
 		return config;
 	}
 
@@ -242,20 +247,20 @@ public class GenericListCatalogConfig<T> extends XMLConfigurableObject {
 	@SuppressWarnings("unchecked")
 	protected Collection<T> newCollection( Object typeSample, String listType, Element tag, Element current ) throws ConfigException {
 		Collection<T> c = null;
+		logger.debug( "tag {} -> listType {}", tag,listType );
 		if ( listType != null ) {
 			try {
 				c = (Collection<T>)ClassHelper.newInstance( listType );
 				if ( c instanceof IdConfigType ) {
 					XmlBeanHelper.setFromElementSafe( c , current );	
 				}
-			} catch (Throwable e) {
-				e.printStackTrace();
+			} catch (Exception | NoClassDefFoundError | ExceptionInInitializerError e) {
 				throw new ConfigException( e );
 			}
 		} else  if ( typeSample instanceof KeyObject<?> ) {
-			c = new ListMapConfig<T>();
+			c = new ListMapConfig<>();
 		} else {
-			c = new ArrayList<T>();
+			c = new ArrayList<>();
 		}
 		if ( c instanceof ListMapConfig ) {
 			((ListMapConfig<T>)c).initFromElementAttributes( current );
@@ -264,35 +269,32 @@ public class GenericListCatalogConfig<T> extends XMLConfigurableObject {
 	}
 	
 	protected T customEntryHandling( String dataListId, T current, Element element ) throws ConfigException {
-		T result = this.customEntryHandling(current, element);
-		return result;
+		return this.customEntryHandling(current, element);
 	}
 	
 	protected T customEntryHandling( T current, Element element ) throws ConfigException {
 		return current;
 	}
 	
-	@Override
-	public void configure(Element tag) throws ConfigException {
-		
-		DOMUtils.attributesToProperties( tag, this.getGeneralProps() );
-		logger.info( "general props : "+this.getGeneralProps() );
-		
-		String tryXsdValidation = this.getGeneralProps().getProperty( ATT_TRY_XSD_VALIDATION, ATT_TRY_XSD_VALIDATION_DEFAULT );
+	private void handleEx( SAXErrorHandlerStore eh ) {
+		for ( SAXException se : eh.getFatals() ) {
+			logger.error( "xsd validation fatal : {}", se.getMessage(), se );
+		}
+		for ( SAXException se : eh.getErrors() ) {
+			logger.error( "xsd validation error : {}", se.getMessage(), se );
+		}
+		for ( SAXException se : eh.getWarnings() ) {
+			logger.warn( "xsd validation warning : {}", se.getMessage(), se );
+		}
+	}
+	
+	private void handleValidation( Element tag, String tryXsdValidation ) throws ConfigException {
 		if ( BooleanUtils.isTrue( tryXsdValidation ) ) {
 			if ( this.hasDefinition() ) {
 				logger.info( "ATT {} is false, skip xsd validation", ATT_TRY_XSD_VALIDATION );
 				try {
 					SAXErrorHandlerStore eh = this.validate( new DOMSource( tag ) );
-					for ( SAXException se : eh.getFatals() ) {
-						logger.error( "xsd validation fatal : {}", se );
-					}
-					for ( SAXException se : eh.getErrors() ) {
-						logger.error( "xsd validation error : {}", se );
-					}
-					for ( SAXException se : eh.getWarnings() ) {
-						logger.warn( "xsd validation warning : {}", se );
-					}
+					this.handleEx( eh );
 				} catch (Exception e) {
 					throw new ConfigException( "Xsd Validation Error "+e, e );
 				}
@@ -302,93 +304,9 @@ public class GenericListCatalogConfig<T> extends XMLConfigurableObject {
 		} else {
 			logger.info( "ATT {} is false, skip xsd validation", ATT_TRY_XSD_VALIDATION );
 		}
-		
-		String checkDuplicateId = this.getGeneralProps().getProperty( CONFIG_CHECK_DUPLICATE_ID , CONFIG_CHECK_DUPLICATE_ID_DEFAULT );
-		String checkDuplicateUniversalId = this.getGeneralProps().getProperty( CONFIG_CHECK_ENTRY_DUPLICATE_ID , CONFIG_CHECK_DUPLICATE_ID_DEFAULT );
-		
-		String listType = this.getGeneralProps().getProperty( ATT_LIST_TYPE );
-		
-		String beanMode = this.getGeneralProps().getProperty( ATT_BEAN_MODE, ATT_BEAN_MODE_DEFAULT );
-		
-		String type = this.getGeneralProps().getProperty( ATT_TYPE );
-		if ( StringUtils.isEmpty( type ) ) {
-			throw new ConfigException( "No type defined" );
-		}
-		
-		Object typeSample = null;
-		try {
-			typeSample = ClassHelper.newInstance( type );
-		} catch (Exception ce ) {
-			throw new ConfigException( ce );
-		}
-		
-		String dataListElementName = this.attTagDataList;
-		String dataElementName = this.attTagData;
-		NodeList dataCatalogConfig = tag.getElementsByTagName( ATT_DATA_CATALOG_CONFIG );
-		if ( dataCatalogConfig.getLength() > 0 ) {
-			Element dataCatalogConfigTag = (Element)dataCatalogConfig.item( 0 );
-			dataListElementName = StringUtils.valueWithDefault( dataCatalogConfigTag.getAttribute( "list-tag" ) , this.attTagDataList );
-			dataElementName = StringUtils.valueWithDefault( dataCatalogConfigTag.getAttribute( "data-tag" ) , this.attTagData );
-		}
-		NodeList schemaListTag = tag.getElementsByTagName( dataListElementName );
-		for ( int k=0; k<schemaListTag.getLength(); k++ ) {
-			Element currentListTag = (Element) schemaListTag.item( k );
-			Collection<T> listCurrent = this.newCollection( typeSample, listType, tag, currentListTag );
-			NodeList schemaIt = currentListTag.getElementsByTagName( dataElementName );
-			String idList = currentListTag.getAttribute( "id" );
-			if ( this.getIdSet().contains( idList ) ) {
-				String message = "Duplicate id found : "+idList;
-				if ( CONFIG_CHECK_DUPLICATE_ID_FAIL.equalsIgnoreCase( checkDuplicateId ) ) {
-					throw new ConfigException( message );
-				} else {
-					logger.warn( "["+this.getClass().getSimpleName()+"]"+message );
-				}
-			}
-			logger.info( "add "+idList+" -> "+listCurrent );
-			this.dataMap.put( idList , listCurrent );
-			this.orderedId.add( idList );
-			String extendsAtt = currentListTag.getAttribute( "extends" );
-			if ( StringUtils.isNotEmpty( extendsAtt ) ) {
-				String[] extendsAttList = extendsAtt.split( "," );
-				for ( int j=0; j<extendsAttList.length; j++ ) {
-					String currentExtend = extendsAttList[j].trim();
-					Collection<T> parent = this.getDataList( currentExtend );
-					if ( parent == null ) {
-						throw new ConfigException( "Parent schema list not found "+currentExtend );
-					} else {
-						listCurrent.addAll( parent );
-					}	
-				}
-			}
-			for ( int i=0; i<schemaIt.getLength(); i++ ) {
-				Element currentSchemaTag = (Element) schemaIt.item( i );
-				String idSchema = currentSchemaTag.getAttribute( "id" );
-				if ( StringUtils.isNotEmpty( idSchema ) && CONFIG_CHECK_DUPLICATE_ID_FAIL.equalsIgnoreCase( checkDuplicateUniversalId ) ) {
-					if ( !this.getEntryIdCheck().add( idSchema ) ) {
-						throw new ConfigException( "Duplicate entry id found : "+idSchema );
-					}
-				}
-				if ( ATT_TAG_TYPE_STRING.equals( type ) ) {
-					if ( StringUtils.isEmpty( idSchema ) ) {
-						throw new ConfigException( "No schema id definied" );
-					} else {
-						@SuppressWarnings("unchecked")
-						T id = ((T)idSchema);
-						id = this.customEntryHandling( idList, id, currentSchemaTag );
-						listCurrent.add( id );	
-					}	
-				} else {
-					try {
-						T t = XmlBeanHelper.setFromElement( type, currentSchemaTag, beanMode );
-						t = this.customEntryHandling( idList, t, currentSchemaTag );
-						listCurrent.add( t );
-					} catch (Exception e) {
-						throw new ConfigException( "Error configuring type : "+e, e );
-					}
-				}
-			}
-		}
-		
+	}
+	
+	private void handleModuleList( Element tag ) throws ConfigException {
 		NodeList moduleListTag = tag.getElementsByTagName( ATT_TAG_MODULE_LIST );
 		for ( int l=0; l<moduleListTag.getLength(); l++ ) {
 			Element currentModuleList = (Element)moduleListTag.item( l );
@@ -399,7 +317,7 @@ public class GenericListCatalogConfig<T> extends XMLConfigurableObject {
 				String mode = currentModule.getAttribute( ATT_TAG_MODULE_CONF_MODE );
 				String path = currentModule.getAttribute( ATT_TAG_MODULE_CONF_PATH );
 				String unsafe = currentModule.getAttribute( ATT_TAG_MODULE_CONF_UNSAFE );
-				logger.info( "Loading module id="+id+" mode="+mode+" path="+path );
+				logger.info( "Loading module id={}, path={}", id, path );
 				try  {
 					InputStream is = StreamHelper.resolveStreamByMode( mode , path );
 					Document currentModuleDoc = DOMIO.loadDOMDoc( is );
@@ -407,13 +325,118 @@ public class GenericListCatalogConfig<T> extends XMLConfigurableObject {
 					this.configure( rootTag );
 				} catch (Exception e) {
 					if ( "true".equalsIgnoreCase( unsafe ) ) {
-						logger.warn( "Module "+id+" load failed, exception suppressed as it's marked 'unsafe'" );
+						logger.warn( "Module {} load failed, exception suppressed as it's marked 'unsafe'", id );
 					} else {
 						throw new ConfigException( "Error loading module : "+id, e );
 					}
 				}
 			}
 		}
+	}
+	
+	private String initConfigure(Element tag ) throws ConfigException {
+		DOMUtils.attributesToProperties( tag, this.getGeneralProps() );
+		logger.info( "general props : {}", this.getGeneralProps() );
+		
+		String tryXsdValidation = this.getGeneralProps().getProperty( ATT_TRY_XSD_VALIDATION, ATT_TRY_XSD_VALIDATION_DEFAULT );
+		this.handleValidation(tag, tryXsdValidation);
+		
+		String type = this.getGeneralProps().getProperty( ATT_TYPE );
+		if ( StringUtils.isEmpty( type ) ) {
+			throw new ConfigException( "No type defined" );
+		}
+		return type;
+	}
+	
+	private Object initTypeSample( String type ) throws ConfigException {
+		Object typeSample = null;
+		try {
+			typeSample = ClassHelper.newInstance( type );
+		} catch (Exception ce ) {
+			throw new ConfigException( ce );
+		}
+		return typeSample;
+	}
+	
+	private void handleExtends( Element currentListTag, Collection<T> listCurrent ) throws ConfigException {
+		String extendsAtt = currentListTag.getAttribute( "extends" );
+		if ( StringUtils.isNotEmpty( extendsAtt ) ) {
+			String[] extendsAttList = extendsAtt.split( "," );
+			for ( int j=0; j<extendsAttList.length; j++ ) {
+				String currentExtend = extendsAttList[j].trim();
+				Collection<T> parent = this.getDataList( currentExtend );
+				if ( parent == null ) {
+					throw new ConfigException( "Parent schema list not found "+currentExtend );
+				} else {
+					listCurrent.addAll( parent );
+				}	
+			}
+		}
+	}
+	
+	private void handleCurrent( ConfigureConfig cc, Element currentSchemaTag, String idList, Collection<T> listCurrent  ) throws ConfigException {
+		String idSchema = currentSchemaTag.getAttribute( "id" );
+		if ( StringUtils.isNotEmpty( idSchema ) 
+				&& CONFIG_CHECK_DUPLICATE_ID_FAIL.equalsIgnoreCase( cc.getCheckDuplicateUniversalId() ) 
+				&& !this.getEntryIdCheck().add( idSchema )) {
+			throw new ConfigException( "Duplicate entry id found : "+idSchema );
+		}
+		if ( ATT_TAG_TYPE_STRING.equals( cc.getType() ) ) {
+			if ( StringUtils.isEmpty( idSchema ) ) {
+				throw new ConfigException( "No schema id definied" );
+			} else {
+				@SuppressWarnings("unchecked")
+				T id = ((T)idSchema);
+				id = this.customEntryHandling( idList, id, currentSchemaTag );
+				listCurrent.add( id );	
+			}	
+		} else {
+			try {
+				T t = XmlBeanHelper.setFromElement( cc.getType(), currentSchemaTag, cc.getBeanMode() );
+				t = this.customEntryHandling( idList, t, currentSchemaTag );
+				listCurrent.add( t );
+			} catch (Exception e) {
+				throw new ConfigException( "Error configuring type : "+e, e );
+			}
+		}
+	}
+	
+	private void handleElements( Element tag, ConfigureConfig cc ) throws ConfigException {
+		NodeList schemaListTag = tag.getElementsByTagName( cc.getDataListElementName() );
+		for ( int k=0; k<schemaListTag.getLength(); k++ ) {
+			Element currentListTag = (Element) schemaListTag.item( k );
+			Collection<T> listCurrent = this.newCollection( cc.getTypeSample(), cc.getListType(), tag, currentListTag );
+			NodeList schemaIt = currentListTag.getElementsByTagName( cc.getDataElementName() );
+			String idList = currentListTag.getAttribute( "id" );
+			if ( this.getIdSet().contains( idList ) ) {
+				String message = "Duplicate id found : "+idList;
+				if ( CONFIG_CHECK_DUPLICATE_ID_FAIL.equalsIgnoreCase( cc.getCheckDuplicateId() ) ) {
+					throw new ConfigException( message );
+				} else {
+					logger.warn( "[{}]{}", this.getClass().getSimpleName(), message );
+				}
+			}
+			logger.debug( "add {} -> {}", idList, listCurrent );
+			this.dataMap.put( idList , listCurrent );
+			this.orderedId.add( idList );
+			this.handleExtends(currentListTag, listCurrent);
+			for ( int i=0; i<schemaIt.getLength(); i++ ) {
+				Element currentSchemaTag = (Element) schemaIt.item( i );
+				this.handleCurrent(cc, currentSchemaTag, idList, listCurrent);
+			}
+		}
+	}
+	
+	@Override
+	public void configure(Element tag) throws ConfigException {
+		
+		String type = this.initConfigure(tag);
+		Object typeSample = this.initTypeSample(type);
+		ConfigureConfig cc = new ConfigureConfig( tag, type, typeSample, this );
+		
+		this.handleElements(tag, cc);
+		
+		this.handleModuleList(tag);
 		
 	}
 
@@ -479,6 +502,85 @@ public class GenericListCatalogConfig<T> extends XMLConfigurableObject {
 		SAXErrorHandlerStore eh = new SAXErrorHandlerStore();
 		this.getDefinition().validate( eh , source, this.getSchemaId() );
 		return eh;
+	}
+	
+}
+
+class ConfigureConfig {
+	
+	public ConfigureConfig( Element tag, String type, Object typeSample, GenericListCatalogConfig<?> catalog ) {
+		this.type = type;
+		this.typeSample = typeSample;
+		this.checkDuplicateId = catalog.getGeneralProps().getProperty( GenericListCatalogConfig.CONFIG_CHECK_DUPLICATE_ID , GenericListCatalogConfig.CONFIG_CHECK_DUPLICATE_ID_DEFAULT );
+		this.checkDuplicateUniversalId = catalog.getGeneralProps().getProperty( GenericListCatalogConfig.CONFIG_CHECK_ENTRY_DUPLICATE_ID , GenericListCatalogConfig.CONFIG_CHECK_DUPLICATE_ID_DEFAULT );
+		this.listType = catalog.getGeneralProps().getProperty( GenericListCatalogConfig.ATT_LIST_TYPE );
+		this.beanMode = catalog.getGeneralProps().getProperty( GenericListCatalogConfig.ATT_BEAN_MODE, GenericListCatalogConfig.ATT_BEAN_MODE_DEFAULT );
+		this.dataListElementName = catalog.attTagDataList;
+		this.dataElementName = catalog.attTagData;
+		NodeList dataCatalogConfig = tag.getElementsByTagName( GenericListCatalogConfig.ATT_DATA_CATALOG_CONFIG );
+		if ( dataCatalogConfig.getLength() > 0 ) {
+			Element dataCatalogConfigTag = (Element)dataCatalogConfig.item( 0 );
+			dataListElementName = StringUtils.valueWithDefault( dataCatalogConfigTag.getAttribute( "list-tag" ) , catalog.attTagDataList );
+			dataElementName = StringUtils.valueWithDefault( dataCatalogConfigTag.getAttribute( "data-tag" ) , catalog.attTagData );
+		}
+	}
+	
+	private String dataListElementName;
+	private String dataElementName;
+	private String type; 
+	private Object typeSample; 
+	private String listType;
+	private String beanMode;
+	private String checkDuplicateId; 
+	private String checkDuplicateUniversalId;
+	
+	public String getDataListElementName() {
+		return dataListElementName;
+	}
+	public void setDataListElementName(String dataListElementName) {
+		this.dataListElementName = dataListElementName;
+	}
+	public String getDataElementName() {
+		return dataElementName;
+	}
+	public void setDataElementName(String dataElementName) {
+		this.dataElementName = dataElementName;
+	}
+	public String getType() {
+		return type;
+	}
+	public void setType(String type) {
+		this.type = type;
+	}
+	public Object getTypeSample() {
+		return typeSample;
+	}
+	public void setTypeSample(Object typeSample) {
+		this.typeSample = typeSample;
+	}
+	public String getListType() {
+		return listType;
+	}
+	public void setListType(String listType) {
+		this.listType = listType;
+	}
+	public String getBeanMode() {
+		return beanMode;
+	}
+	public void setBeanMode(String beanMode) {
+		this.beanMode = beanMode;
+	}
+	public String getCheckDuplicateId() {
+		return checkDuplicateId;
+	}
+	public void setCheckDuplicateId(String checkDuplicateId) {
+		this.checkDuplicateId = checkDuplicateId;
+	}
+	public String getCheckDuplicateUniversalId() {
+		return checkDuplicateUniversalId;
+	}
+	public void setCheckDuplicateUniversalId(String checkDuplicateUniversalId) {
+		this.checkDuplicateUniversalId = checkDuplicateUniversalId;
 	}
 	
 }

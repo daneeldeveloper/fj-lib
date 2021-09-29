@@ -65,7 +65,7 @@ public class DataListCatalogConfig extends GenericListCatalogConfig<String> {
 	 * @return				the object configured
 	 * @throws Exception	in case of issues
 	 */
-	protected static DataListCatalogConfig loadConfig( InputStream is, DataListCatalogConfig config ) throws Exception {
+	public static DataListCatalogConfig loadConfig( InputStream is, DataListCatalogConfig config ) throws Exception {
 		Document doc = DOMIO.loadDOMDoc( is );
 		Element root = doc.getDocumentElement();
 		config.configure( root );
