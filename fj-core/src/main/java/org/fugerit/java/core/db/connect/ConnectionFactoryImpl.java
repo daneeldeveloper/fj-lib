@@ -23,23 +23,26 @@ package org.fugerit.java.core.db.connect;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.Driver;
-import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 
-import javax.naming.Context;
 import javax.naming.InitialContext;
-import javax.naming.NamingException;
 import javax.sql.DataSource;
 
+import org.fugerit.java.core.cfg.ConfigRuntimeException;
 import org.fugerit.java.core.db.dao.DAOException;
 import org.fugerit.java.core.db.metadata.DataBaseInfo;
+import org.fugerit.java.core.function.UnsafeSupplier;
+import org.fugerit.java.core.lang.helpers.BooleanUtils;
+import org.fugerit.java.core.lang.helpers.StringUtils;
 import org.fugerit.java.core.log.BasicLogObject;
-import org.fugerit.java.core.log.LogFacade;
+import org.fugerit.java.core.util.PropsIO;
 import org.fugerit.java.core.xml.dom.DOMUtils;
 import org.fugerit.java.core.xml.dom.SearchDOM;
 import org.w3c.dom.Element;
+
+import lombok.extern.slf4j.Slf4j;
 
 
 /**
@@ -47,6 +50,7 @@ import org.w3c.dom.Element;
  * 
  * @author Fugerit
  */
+@Slf4j
 public abstract class ConnectionFactoryImpl extends BasicLogObject implements ConnectionFactory {
 	
 	protected void init() throws DAOException {
@@ -149,26 +153,47 @@ public abstract class ConnectionFactoryImpl extends BasicLogObject implements Co
 	 */
 	public static final String PROP_CF_EXT_POOLED_MC = "db-ext-pooled-mc";
 
+	public static ConnectionFactoryCloseable wrap( ConnectionFactory cf ) {
+		return new ConnectionFactoryCloseable() {
+			@Override
+			public void close() throws Exception {
+				this.release();
+			}
+			@Override
+			public void release() throws DAOException {
+				cf.release();
+			}
+			@Override
+			public DataBaseInfo getDataBaseInfo() throws DAOException {
+				return cf.getDataBaseInfo();
+			}
+			@Override
+			public Connection getConnection() throws DAOException {
+				return cf.getConnection();
+			}
+		};
+	}
+	
 	/**
 	 * Parse a configuration Element looking for ConnectionFactory configuration
 	 * 
-	 * @param cfConfig		the Element
-	 * @return			the CfConfig
-	 * @throws Exception	in case of issues
+	 * @param cfConfig			the Element
+	 * @return					the CfConfig
+	 * @throws DAOException		in case of issues
 	 */
-	public static CfConfig parseCfConfig( Element cfConfig ) throws Exception {
+	public static CfConfig parseCfConfig( Element cfConfig ) throws DAOException {
 		CfConfig config = new CfConfig();
 		SearchDOM searchDOM = SearchDOM.newInstance( true , true );
 		List<Element> cfConfigEntryList = searchDOM.findAllTags( cfConfig , "cf-config-entry" );
 		Iterator<Element> cfConfigEntryIt = cfConfigEntryList.iterator();
 		while ( cfConfigEntryIt.hasNext() ) {
-			Element currentEntryTag = (Element) cfConfigEntryIt.next();
+			Element currentEntryTag = cfConfigEntryIt.next();
 			Properties props = DOMUtils.attributesToProperties( currentEntryTag );
 			String id = props.getProperty( "id" );
-			if ( id == null || id.trim().length() == 0 ) {
-				throw new Exception( "Connection factory id must be defined." );
+			if ( StringUtils.isEmpty( id ) ) {
+				throw new ConfigRuntimeException( "Connection factory id must be defined." );
 			} else if ( config.getCfMap().containsKey( id ) ) {
-				throw new Exception( "Connection factory id already used : '"+id+"'" );
+				throw new ConfigRuntimeException( "Connection factory id already used : '"+id+"'" );
 			} else {
 				config.getCfMap().put( id , newInstance( props ) );
 			}
@@ -181,30 +206,15 @@ public abstract class ConnectionFactoryImpl extends BasicLogObject implements Co
 	 * 
 	 * @param cf		the ConnectionFactory
 	 * @return			a string describing the driver
-	 * @throws Exception	in case of issues
+	 * @throws DAOException	in case of issues
 	 */
-	public static String getDriverInfo( ConnectionFactory cf ) throws Exception {
-		String result = "";
-		Connection conn = cf.getConnection();
-		DatabaseMetaData databaseMetaData = conn.getMetaData();
-		result = databaseMetaData.getDriverName()+" "+databaseMetaData.getDriverVersion();
-		conn.close();
-		return result;
-	}
-	
-	/**
-	 * Helper method to create a property with prefix
-	 * 
-	 * @param prefix	the prefix
-	 * @param name		the property base name
-	 * @return			the property full name ( prefix-name, or name if prefix == null)
-	 */
-	private static String getParamName( String prefix, String name ) {
-		String res = name;
-		if ( prefix != null && !prefix.equals( "" ) ) {
-			res = prefix+"-"+name;
-		}
-		return res;
+	public static String getDriverInfo( ConnectionFactory cf ) throws DAOException {
+		return DAOException.get( () -> {
+			try (Connection conn = cf.getConnection()) {
+				DatabaseMetaData databaseMetaData = conn.getMetaData();
+				return databaseMetaData.getDriverName()+" "+databaseMetaData.getDriverVersion();
+			}
+		});
 	}
 	
 	/**
@@ -233,34 +243,26 @@ public abstract class ConnectionFactoryImpl extends BasicLogObject implements Co
 		}
 		ConnectionFactory cf = null;
 		String prefix = props.getProperty( PROP_CF_MODE_DC_PREFIX, propsPrefix );
-		String mode = props.getProperty( getParamName( prefix, PROP_CF_MODE ) );
-		LogFacade.getLog().info( "ConnectionFactory.newInstance() mode : "+mode );
+		Properties prefixProps = props;
+		if ( StringUtils.isNotEmpty( prefix ) ) {
+			prefixProps = PropsIO.subProps( props , prefix+"-" );
+			log.info( "subProps : {} -> {}", prefix, prefixProps );
+		}
+		String mode = prefixProps.getProperty( PROP_CF_MODE );
+		log.info( "ConnectionFactory.newInstance() mode : {}", mode );
 		if ( PROP_CF_MODE_DC.equalsIgnoreCase( mode ) ) {
-			if ( "true".equalsIgnoreCase( props.getProperty( getParamName( prefix, PROP_CF_EXT_POOLED ) ) ) ) {
-				int sc = Integer.parseInt( props.getProperty( getParamName( prefix, PROP_CF_EXT_POOLED_SC ), "3" ) );
-				int ic = Integer.parseInt( props.getProperty( getParamName( prefix, PROP_CF_EXT_POOLED_IC ), "10" ) );
-				int mc = Integer.parseInt( props.getProperty( getParamName( prefix, PROP_CF_EXT_POOLED_MC ), "30" ) );
-				cf = new DbcpConnectionFactory( props.getProperty( getParamName( prefix, PROP_CF_MODE_DC_DRV ) ), 
-						props.getProperty( getParamName( prefix, PROP_CF_MODE_DC_URL ) ),
-						props.getProperty( getParamName( prefix, PROP_CF_MODE_DC_USR ) ),
-						props.getProperty( getParamName( prefix, PROP_CF_MODE_DC_PWD ) ), sc, ic, mc, cl );
+			if ( BooleanUtils.isTrue( prefixProps.getProperty(PROP_CF_EXT_POOLED ) ) ) {
+				cf = new DbcpConnectionFactory(prefixProps, cl);
 			} else {
-				cf = newInstance( props.getProperty( getParamName( prefix, PROP_CF_MODE_DC_DRV ) ), 
-						props.getProperty( getParamName( prefix, PROP_CF_MODE_DC_URL ) ),
-						props.getProperty( getParamName( prefix, PROP_CF_MODE_DC_USR ) ),
-						props.getProperty( getParamName( prefix, PROP_CF_MODE_DC_PWD ) ), cl );
+				cf = newInstance( prefixProps.getProperty( PROP_CF_MODE_DC_DRV ), 
+						prefixProps.getProperty(PROP_CF_MODE_DC_URL ),
+						prefixProps.getProperty(PROP_CF_MODE_DC_USR ),
+						prefixProps.getProperty(PROP_CF_MODE_DC_PWD ), cl );
 			}
-		} else if ( PROP_CF_MODE_DS.equalsIgnoreCase( mode ) ) {
-			cf = newInstance( props.getProperty( PROP_CF_MODE_DS_NAME ) );	
-		} else if ( PROP_CF_MODE_DS2.equalsIgnoreCase( mode ) ) {
-			String dsName = props.getProperty( PROP_CF_MODE_DS_NAME );
-			try {
-				javax.naming.InitialContext ctx = new javax.naming.InitialContext();
-	            DataSource dataSource = ( DataSource ) ctx.lookup( dsName );
-	            cf = newInstance( dataSource );
-			} catch (Exception e) {
-				throw ( new DAOException( e ) );
-			}
+		} else if ( PROP_CF_MODE_DS.equalsIgnoreCase( mode ) || PROP_CF_MODE_DS2.equalsIgnoreCase( mode ) ) {
+			String dsName = prefixProps.getProperty( PROP_CF_MODE_DS_NAME );
+			log.info( "dsName -> {}", dsName );
+			cf = newInstance( dsName );
 		} else {
 			throw ( new DAOException( "Unsupported factory mode ( valid values ar 'dc', 'ds', 'ds2' )" ) );
 		}
@@ -278,7 +280,10 @@ public abstract class ConnectionFactoryImpl extends BasicLogObject implements Co
 	 * @throws DAOException	in case of issues
 	 */
 	public static ConnectionFactory newInstance(Driver drv, String url, String usr, String pwd) throws DAOException {
-		return new DirectConnectionFactory( drv, url , usr, pwd );
+		Properties info = new Properties();
+		info.setProperty( "user", usr );
+		info.setProperty( "password", pwd );
+		return new SupplierConnectionFactory( "directConnectionSupplier" , () -> drv.connect( url, info ) );
 	}	
 
 	/**
@@ -307,23 +312,19 @@ public abstract class ConnectionFactoryImpl extends BasicLogObject implements Co
 	 * @throws DAOException	in case of issues
 	 */
 	public static ConnectionFactory newInstance(String drv, String url, String usr, String pwd, ClassLoader cl) throws DAOException {
-		ConnectionFactory connectionFactory = null;
-		try {
-			LogFacade.getLog().info( "ConnectionFactoryImpl.newInstance() direct connection driver   : "+drv );
-			LogFacade.getLog().info( "ConnectionFactoryImpl.newInstance() direct connection url      : "+url );
-			LogFacade.getLog().info( "ConnectionFactoryImpl.newInstance() direct connection username : "+usr );
-			LogFacade.getLog().info( "ConnectionFactoryImpl.newInstance() direct connection password : ******" );
+		log.info( "ConnectionFactoryImpl.newInstance() direct connection driver   : {}", drv );
+		log.info( "ConnectionFactoryImpl.newInstance() direct connection url      : {}", url );
+		log.info( "ConnectionFactoryImpl.newInstance() direct connection username : {}", usr );
+		log.info( "ConnectionFactoryImpl.newInstance() direct connection password : ******" );
+		return DAOException.get( () -> {
 			Driver driver = null;
 			if ( cl != null ) {
 				driver = (Driver)cl.loadClass( drv ).getDeclaredConstructor().newInstance();
 			} else {
-				driver= (Driver)Class.forName( drv ).asSubclass( Driver.class ).getDeclaredConstructor().newInstance();
+				driver= Class.forName( drv ).asSubclass( Driver.class ).getDeclaredConstructor().newInstance();
 			}
-			connectionFactory = ( new DirectConnectionFactory( driver, url, usr, pwd ) );
-		} catch (Exception e) {
-			throw ( new DAOException( e ) );
-		}
-		return connectionFactory;
+			return newInstance(driver, url, usr, pwd);
+		});
 	}
 	
 	/**
@@ -334,8 +335,8 @@ public abstract class ConnectionFactoryImpl extends BasicLogObject implements Co
 	 * @throws DAOException		in case of issues
 	 */
 	public static ConnectionFactoryImpl newInstance(String dsName) throws DAOException {
-		LogFacade.getLog().info( "ConnectionFactoryImpl.newInstance() data source name : "+dsName );
-		return (new DSConnectionFactory(dsName));
+		log.info( "ConnectionFactoryImpl.newInstance() data source name : {}", dsName );
+		return newInstance( DAOException.get( () -> (DataSource)new InitialContext().lookup( dsName ) ) );
 	}
 
 	/**
@@ -346,135 +347,57 @@ public abstract class ConnectionFactoryImpl extends BasicLogObject implements Co
 	 * @throws DAOException		in case of issues
 	 */
 	public static ConnectionFactoryImpl newInstance(DataSource ds) throws DAOException {
-		LogFacade.getLog().info( "ConnectionFactoryImpl.newInstance() data source : "+ds );
-		return (new DS2ConnectionFactory(ds));
+		return newInstance( ds, false );
+	}	
+
+	public static ConnectionFactoryImpl newInstance(DataSource ds, boolean testConn) throws DAOException {
+		log.info( "ConnectionFactoryImpl.newInstance() data source : {}", ds );
+		return new SupplierConnectionFactory( "dataSourceSupplier" , ds::getConnection, testConn );
 	}	
 	
-	/*
-	 * (non-Javadoc)
-	 * @see org.fugerit.java.core.db.connect.ConnectionFactory#getConnection()
-	 */
-	@Override
-	public abstract Connection getConnection() throws DAOException;
-
 	/*
 	 * (non-Javadoc)
 	 * @see org.fugerit.java.core.db.connect.ConnectionFactory#release()
 	 */
 	@Override
 	public void release() throws DAOException {
-		
+		// do nothing implementation : sub classes should override it
 	}	
 	
 }
 
-/**
- * ConnectionFactory implementations based on DriverManager
- * 
- * @author Fugerit
- *
- */
-class DirectConnectionFactory extends ConnectionFactoryImpl {
-
-	private String url; 
-	private Driver driver;
-	private Properties info;
+@Slf4j
+class SupplierConnectionFactory extends ConnectionFactoryImpl {
 	
-	public DirectConnectionFactory( Driver drv, String url, String usr, String pwd ) {
-		this.driver = drv;
-		this.url = url;
-		this.info = new Properties();
-		this.info.setProperty( "user", usr );
-		this.info.setProperty( "password", pwd );
+	private String description;
+	
+	private UnsafeSupplier<Connection, Exception> supplier;
+
+	public SupplierConnectionFactory(String description, UnsafeSupplier<Connection, Exception> supplier) throws DAOException {
+		this( description, supplier, false );
 	}
 	
+	public SupplierConnectionFactory(String description, UnsafeSupplier<Connection, Exception> supplier, boolean checkConn) throws DAOException {
+		super();
+		this.description = description;
+		this.supplier = supplier;
+		if ( checkConn ) {
+			DAOException.apply( () -> {
+				try ( Connection conn = supplier.get() ) {
+					log.info( "check connection ok {}", conn );
+				}	
+			});
+		}
+	}
+
 	@Override
 	public Connection getConnection() throws DAOException {
-		Connection conn = null;
-		try {
-			conn = this.driver.connect( this.url, this.info );
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw ( new DAOException(e) );
-		}
-
-		return conn;
+		return DAOException.get( supplier );
 	}
-	
-}
-
-/**
- * ConnectionFactory implementation based on a Data  Source
- * 
- * @author Fugerit
- *
- */
-class DSConnectionFactory extends ConnectionFactoryImpl {
 	
 	@Override
 	public String toString() {
-		return this.getClass().getName()+"[dsName:"+this.dsName+",source:"+this.source+"]";
-	}	
-	
-	@Override
-	public Connection getConnection() throws DAOException {
-		Connection conn = null;
-		try {
-			conn = this.source.getConnection();
-		} catch (SQLException se) {
-			throw (new DAOException("Cannot create connection", se));
-		}
-		return conn;
+		return "SupplierConnectionFactory["+this.description+"]";
 	}
-
-	private String dsName;
-	
-	private DataSource source;	
-	
-	public DSConnectionFactory(String dsName) throws DAOException  {
-		this.getLogger().info( "INIT START, dsName="+dsName );
-		this.dsName = dsName;
-		try {
-			Context ctx = new InitialContext();
-			source = (DataSource) ctx.lookup(dsName);
-		} catch (NamingException ne) {
-			throw (new DAOException("Cannot create ConnectionFactory", ne));
-		} catch (Exception e) {
-            throw (new DAOException("Fatal Error", e));
-        }
-		this.getLogger().info( "INIT END, source="+source );
-	}	
-	
-}
-
-/**
- * ConnectionFactory implementation based on a Data Source (v2)
- * 
- * @author Fugerit
- *
- */
-class DS2ConnectionFactory extends ConnectionFactoryImpl {
-	
-	@Override
-	public String toString() {
-		return this.getClass().getName()+"[source:"+this.source+"]";
-	}	
-	
-	@Override
-	public Connection getConnection() throws DAOException {
-		Connection conn = null;
-		try {
-			conn = this.source.getConnection();
-		} catch (SQLException se) {
-			throw (new DAOException("Cannot create Connection", se));
-		}
-		return conn;
-	}
-	
-	private DataSource source;	
-	
-	public DS2ConnectionFactory(DataSource ds) throws DAOException  {
-		this.source = ds;
-	}	
 	
 }

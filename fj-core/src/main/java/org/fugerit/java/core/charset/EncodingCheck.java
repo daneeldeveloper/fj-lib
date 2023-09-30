@@ -27,9 +27,9 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
+import java.util.Arrays;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>Library to check if and encoding is respected.</p>
@@ -37,14 +37,15 @@ import org.slf4j.LoggerFactory;
  * @author Fugerit
  *
  */
+@Slf4j
 public class EncodingCheck {
 
-	private static final Logger logger = LoggerFactory.getLogger(EncodingCheck.class);
-	
 	/**
 	 * Buffer size for reading the input
 	 */
 	public static final int READ_BUFFER_SIZE = 1024 * 1024;
+	
+	private EncodingCheck() {}
 	
 	/**
 	 * <p>Check encoding from an input stream.
@@ -65,15 +66,12 @@ public class EncodingCheck {
 			totalSize+= read;
 			byte[] checkData = buffer;
 			if ( read != buffer.length ) {
-				checkData = new byte[read];
-				for ( int k=0; k<read; k++ ) {
-					checkData[k] = buffer[k];
-				}
+				checkData = Arrays.copyOf( buffer , read );
 			}
 			result = checkEncoding( checkData , encoding );
 			read = is.read( buffer );
 		}
-		logger.debug( "totalSize : "+totalSize );
+		log.debug( "totalSize : {}", totalSize );
         return result;
 	}
 	
@@ -94,7 +92,7 @@ public class EncodingCheck {
             decoder.decode(buffer);
             result = true;
         } catch (final CharacterCodingException e) {
-        	logger.debug( "Wrong encoding : "+e );
+        	log.debug( "Wrong encoding : {}", e.toString() );
         	result = false;
         }
         return result;

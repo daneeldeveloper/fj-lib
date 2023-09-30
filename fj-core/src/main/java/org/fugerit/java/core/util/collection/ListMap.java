@@ -20,6 +20,7 @@
  */
 package org.fugerit.java.core.util.collection;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.AbstractList;
 import java.util.ArrayList;
@@ -28,6 +29,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
+import org.fugerit.java.core.cfg.ConfigRuntimeException;
 
 /**
  * <p>A implementation of java.util.List interface able to save a collections in a Map too.</p>
@@ -38,6 +41,18 @@ import java.util.Map;
  * @param <T>	the class type for the value
  */
 public class ListMap<K,T> extends AbstractList<T> implements Serializable {
+	
+	@Override
+	public int hashCode() {
+		// super class implementation is ok
+		return super.hashCode();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		// super class implementation is ok - is equals if all contained elements are equals
+		return super.equals(o);
+	}
 	
 	/*
 	 * Add mode  STRICT ( raise a runtime exception in case of duplicate keys )
@@ -53,6 +68,22 @@ public class ListMap<K,T> extends AbstractList<T> implements Serializable {
 	 * Default add mode (LOOSE)
 	 */
 	public static final int ADD_MODE_DEFAULT = ADD_MODE_LOOSE;
+	
+	// code added to setup a basic conditional serialization - START
+	
+	private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+		// this class is conditionally serializable, depending on contained object
+		// you are encouraged to handle special situation using this method
+		out.defaultWriteObject();
+	}
+
+	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+		// this class is conditionally serializable, depending on contained object
+		// you are encouraged to handle special situation using this method
+		in.defaultReadObject();
+	}
+	
+	// code added to setup a basic conditional serialization - END
 	
 	/*
 	 * 
@@ -84,8 +115,8 @@ public class ListMap<K,T> extends AbstractList<T> implements Serializable {
 
 	
 	public ListMap( KeyMapper<K,T> keyMapper, int addMode ) {
-		this.list = new ArrayList<T>();
-		this.map = new HashMap<K, T>();
+		this.list = new ArrayList<>();
+		this.map = new HashMap<>();
 		this.keyMapper = keyMapper;
 		this.addMode = addMode;
 	}
@@ -115,7 +146,7 @@ public class ListMap<K,T> extends AbstractList<T> implements Serializable {
 			Object currentKey = ((KeyObject<?>) element).getKey();
 			key = ((K)currentKey);	
 		} else {
-			throw new RuntimeException( "No key rule for object : "+element );
+			throw new ConfigRuntimeException( "No key rule for object : "+element );
 		}
 		return key;
 	}
@@ -123,7 +154,7 @@ public class ListMap<K,T> extends AbstractList<T> implements Serializable {
 	@Override
 	public void add(int index, T element) {
 		if ( this.getAddMode() == ADD_MODE_STRICT && this.map.containsKey( this.getKey( element ) ) ) {
-			throw new RuntimeException( "Key already exists for element : "+element );
+			throw new ConfigRuntimeException( "Key already exists for element : "+element );
 		} else {
 			this.putWorker( element );
 			this.list.add(index, element);
@@ -221,7 +252,6 @@ public class ListMap<K,T> extends AbstractList<T> implements Serializable {
 	private void removeWorker( T element ) {
 		this.map.remove( this.getKey( element ) );
 	}
-	
 	
 }
 

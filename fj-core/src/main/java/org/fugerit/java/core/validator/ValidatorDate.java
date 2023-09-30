@@ -65,17 +65,17 @@ public class ValidatorDate extends BasicValidator {
 	public void configure( Properties atts ) throws ConfigException {
 		super.configure(atts);
 		try {
-			String dateFormat = atts.getProperty( KEY_DATEFORMAT ); 
-			if ( StringUtils.isNotEmpty( dateFormat ) ) {
-				this.dateFormat = dateFormat;
+			String dateFormatLocal = atts.getProperty( KEY_DATEFORMAT ); 
+			if ( StringUtils.isNotEmpty( dateFormatLocal ) ) {
+				this.dateFormat = dateFormatLocal;
 			}
-			String minDate = atts.getProperty( KEY_MINDATE );
-			if ( StringUtils.isNotEmpty( minDate ) ) {
-				this.minDate = minDate;
+			String minDateLocal = atts.getProperty( KEY_MINDATE );
+			if ( StringUtils.isNotEmpty( minDateLocal ) ) {
+				this.minDate = minDateLocal;
 			}
-			String maxDate = atts.getProperty( KEY_MAXDATE );
-			if ( StringUtils.isNotEmpty( maxDate ) ) {
-				this.maxDate = maxDate;
+			String maxDateLocal = atts.getProperty( KEY_MAXDATE );
+			if ( StringUtils.isNotEmpty( maxDateLocal ) ) {
+				this.maxDate = maxDateLocal;
 			}
 		} catch (Exception e) {
 			throw new ConfigException( e );
@@ -84,12 +84,12 @@ public class ValidatorDate extends BasicValidator {
 
 	@Override
 	public boolean validate(ValidatorContext context) throws Exception {
-		String minDate = this.checkOverride( context, this.getMinDate(), KEY_MINDATE );
-		String maxDate = this.checkOverride( context, this.getMaxDate(), KEY_MAXDATE );
-		return super.validate( context ) && this.validate( context, minDate, maxDate );
+		String minDateLocal = this.checkOverride( context, this.getMinDate(), KEY_MINDATE );
+		String maxDateLocal = this.checkOverride( context, this.getMaxDate(), KEY_MAXDATE );
+		return super.validate( context ) && this.validate( context, minDateLocal, maxDateLocal );
 	}
 	
-	protected boolean validate( ValidatorContext context, String minDate, String maxDate ) throws Exception {
+	protected boolean validate( ValidatorContext context, String minDate, String maxDate ) throws ConfigException  {
 		boolean valid = true;
 		try {
 			SimpleDateFormat sdf = new SimpleDateFormat( this.getDateFormat() );

@@ -13,6 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Element;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public abstract class FixedFileFieldBasicValidator extends XMLConfigurableObject implements FixedFileFieldValidator {
 
 	public static final String DEFAULT_BUNDLE_PATH = "core.fixed.parser.validator";
@@ -30,7 +33,9 @@ public abstract class FixedFileFieldBasicValidator extends XMLConfigurableObject
 		};
 		String baseError = bundle.getString( errorKey );
 		MessageFormat mf = new MessageFormat( baseError );
-		return mf.format( args );
+		String message = mf.format( args );
+		log.trace( "message colNumber:{} -> {}", colNumber, message );
+		return message;
 }
 	
 	public static ResourceBundle newBundle( String bundlePath, String locale ) {
@@ -49,7 +54,7 @@ public abstract class FixedFileFieldBasicValidator extends XMLConfigurableObject
 	public static final String ATT_NAME_LOCALE = "locale";
 	public static final String ATT_NAME_REQUIRED = "required";
 
-	private ResourceBundle bundle;
+	private transient ResourceBundle bundle;
 	
 	/**
 	 * 
@@ -95,23 +100,17 @@ public abstract class FixedFileFieldBasicValidator extends XMLConfigurableObject
 		}
 		return new FixedFileFieldValidationResult( valid, fieldLabel, message, exception, rowNumber, colNumber );
 	}
-	
-	@Override
-	public abstract FixedFileFieldValidationResult checkField(String fieldLabel, String fieldValue, int rowNumber, int colNumber );
 
 	protected void configure( Element tag, String bundlePath ) throws ConfigException {
-		String id = tag.getAttribute( ATT_NAME_ID );
-		logger.info( "id "+ATT_NAME_ID+" -> '"+id+"'" );
-		String locale = tag.getAttribute( ATT_NAME_LOCALE );
-		logger.info( "locale "+ATT_NAME_LOCALE+" -> '"+locale+"'" );
-		String req = tag.getAttribute( ATT_NAME_REQUIRED );
-		this.required = BooleanUtils.isTrue( req );
-		this.bundle = newBundle(bundlePath, locale);
+		ConfigException.apply( () -> {
+			String idLocal = tag.getAttribute( ATT_NAME_ID );
+			logger.info( "id {} -> '{}'", ATT_NAME_ID, idLocal );
+			String locale = tag.getAttribute( ATT_NAME_LOCALE );
+			logger.info( "locale {} -> '{}", ATT_NAME_LOCALE, locale );
+			String req = tag.getAttribute( ATT_NAME_REQUIRED );
+			this.required = BooleanUtils.isTrue( req );
+			this.bundle = newBundle(bundlePath, locale);			
+		} );
 	}
-	
-	@Override
-	public abstract void configure( Element tag ) throws ConfigException;
-	
-	
 
 }

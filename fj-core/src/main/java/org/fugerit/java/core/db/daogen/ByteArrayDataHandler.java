@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.sql.Blob;
 
+import org.fugerit.java.core.db.dao.DAOException;
 import org.fugerit.java.core.io.StreamIO;
 
 public abstract class ByteArrayDataHandler {
@@ -13,15 +14,17 @@ public abstract class ByteArrayDataHandler {
 	
 	public abstract byte[] getData();
 
-	public static ByteArrayDataHandler newHandlerByte( byte[] data ) throws Exception {
-		ByteArrayDataHandler r = null;
-		if ( data != null ) {
-			r = new PreloadByteArrayDataHandler( data );
-		}
-		return r;
+	public static ByteArrayDataHandler newHandlerByte( byte[] data ) throws DAOException {
+		return DAOException.get( () -> {
+			ByteArrayDataHandler r = null;
+			if ( data != null ) {
+				r = new PreloadByteArrayDataHandler( data );
+			}
+			return r;
+		} );
 	}
 	
-	public static ByteArrayDataHandler newHandlerDefault( Blob b ) throws Exception {
+	public static ByteArrayDataHandler newHandlerDefault( Blob b ) throws DAOException {
 		return newHandlerPreload(b);
 	}
 	
@@ -30,15 +33,17 @@ public abstract class ByteArrayDataHandler {
 		return new String( this.getData() );
 	}
 	
-	public static ByteArrayDataHandler newHandlerPreload( final Blob b ) throws Exception {
-		ByteArrayDataHandler handler = null;
-		if ( b != null && b.length() > 0 ) {
-			byte[] data = StreamIO.readBytes( b.getBinaryStream() );
-			if ( data != null && !( data.length == 1 && data[0] == 0) ) {
-				handler = new PreloadByteArrayDataHandler( data );
+	public static ByteArrayDataHandler newHandlerPreload( final Blob b ) throws DAOException {
+		return DAOException.get( () -> {
+			ByteArrayDataHandler handler = null;
+			if ( b != null && b.length() > 0 ) {
+				byte[] data = StreamIO.readBytes( b.getBinaryStream() );
+				if ( data != null && !( data.length == 1 && data[0] == 0) ) {
+					handler = new PreloadByteArrayDataHandler( data );
+				}
 			}
-		}
-		return handler;
+			return handler;
+		} );
 	}
 	
 }

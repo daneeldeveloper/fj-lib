@@ -15,28 +15,27 @@ import org.fugerit.java.core.lang.helpers.BooleanUtils;
 import org.fugerit.java.core.lang.helpers.ClassHelper;
 import org.fugerit.java.core.lang.helpers.StringUtils;
 import org.fugerit.java.core.util.collection.ListMapStringKey;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class PropertyHolder extends BasicIdConfigType {
 
-	private final static Logger logger = LoggerFactory.getLogger( PropertyHolder.class );
-	
 	public static final String UNSAFE_TRUE = "true";
 	public static final String UNSAFE_FALSE = "false";
 	public static final String UNSAFE_WARN = "warn";
 	
-	public final static String MODE_CLASS_LOADER = "classloader";
-	public final static String MODE_CL = "cl";
+	public static final String MODE_CLASS_LOADER = "classloader";
+	public static final String MODE_CL = "cl";
 	
-	public final static String MODE_FILE = "file";
+	public static final String MODE_FILE = "file";
 	
 	/**
 	 * When this mode is used, you must define in PATH reference to other holders in the same catalog, semicolon separated.
 	 * For instace if props-01 and props-02 are two holder in the same catalog : 
 	 * path="props01;props-02"
 	 */
-	public final static String MODE_MULTI = "multi";
+	public static final String MODE_MULTI = "multi";
 	
 	/**
 	 * 
@@ -115,35 +114,43 @@ public class PropertyHolder extends BasicIdConfigType {
 		}
 	}
 	
+	private static void handleException( String path, Exception e, String unsafe, String usafeMessage ) throws IOException {
+		if ( UNSAFE_TRUE.equalsIgnoreCase( unsafe ) || UNSAFE_WARN.equalsIgnoreCase( unsafe ) ) {
+			String unsafeMessafeWork = usafeMessage+" ";
+			if ( StringUtils.isNotEmpty( usafeMessage ) ) {
+				unsafeMessafeWork+= usafeMessage+" ";
+			}
+			unsafeMessafeWork+= path + ", " + unsafe + ", " + e;
+			if ( UNSAFE_WARN.equalsIgnoreCase( unsafe ) ) {
+				log.warn( "Error loading unsafe property holder : {}", unsafeMessafeWork );	
+			} else {
+				log.error( "WARNING! Error loading unsafe property holder :{}", unsafeMessafeWork, e );
+			}
+		} else {
+			throw new IOException( "Property holder load error : "+path, e );
+		}
+	}
+	
+	private static void loadInner( Properties props, String mode, String path, String xml, String encoding ) throws IOException {
+		if ( MODE_CLASS_LOADER.equalsIgnoreCase( mode ) || MODE_CL.equalsIgnoreCase( mode ) ) {
+			try ( InputStream is = ClassHelper.loadFromDefaultClassLoader( path ) ) {
+				loadWorker( is , props, BooleanUtils.isTrue( xml ), encoding );
+			} catch (Exception e) {
+				throw new IOException( e );
+			}
+		} else {
+			try ( InputStream is = new FileInputStream( new File( path ) ) ) {
+				loadWorker( is , props, BooleanUtils.isTrue( xml ), encoding );
+			}
+		}
+	}
+	
 	private static Properties load( String mode, String path, String xml, String unsafe, String usafeMessage, String encoding ) throws IOException {
 		Properties props = new Properties();
 		try {
-			if ( MODE_CLASS_LOADER.equalsIgnoreCase( mode ) || MODE_CL.equalsIgnoreCase( mode ) ) {
-				try ( InputStream is = ClassHelper.loadFromDefaultClassLoader( path ) ) {
-					loadWorker( is , props, BooleanUtils.isTrue( xml ), encoding );
-				} catch (Exception e) {
-					throw new IOException( e );
-				}
-			} else {
-				try ( InputStream is = new FileInputStream( new File( path ) ) ) {
-					loadWorker( is , props, BooleanUtils.isTrue( xml ), encoding );
-				}
-			}	
+			loadInner(props, mode, path, xml, encoding);
 		} catch ( Exception e ) {
-			if ( UNSAFE_TRUE.equalsIgnoreCase( unsafe ) || UNSAFE_WARN.equalsIgnoreCase( unsafe ) ) {
-				String unsafeMessage = " ";
-				if ( StringUtils.isNotEmpty( unsafeMessage ) ) {
-					unsafeMessage+= unsafeMessage+" ";
-				}
-				unsafeMessage = path + ", " + unsafe + ", " + e;
-				if ( UNSAFE_WARN.equalsIgnoreCase( unsafe ) ) {
-					logger.warn( "Error loading unsafe property holder : "+unsafeMessage );	
-				} else {
-					logger.error( "WARNING! Error loading unsafe property holder : "+unsafeMessage, e );
-				}
-			} else {
-				throw new IOException( "Property holder load error : "+path, e );
-			}
+			handleException(path, e, unsafe, usafeMessage);
 		}
 		return props;
 	}
@@ -161,7 +168,7 @@ public class PropertyHolder extends BasicIdConfigType {
 					String oldValue = multi.getProperty( k );
 					String newValue = currentProps.getProperty( k );
 					if ( oldValue != null ) {
-						logger.info( "Override property '{}' from '{}' to '{}'", k, oldValue, newValue );
+						log.info( "Override property '{}' from '{}' to '{}'", k, oldValue, newValue );
 					}
 					multi.setProperty( k , newValue );
 				}

@@ -19,7 +19,7 @@ public class MiniFilterChain extends MiniFilterBase {
 
 	public MiniFilterChain(String key, int defaultBehaviour) {
 		super(key, defaultBehaviour);
-		this.filterChain = new ArrayList<MiniFilter>();
+		this.filterChain = new ArrayList<>();
 		this.defaultConfig = new Properties();
 	}
 
@@ -66,7 +66,10 @@ public class MiniFilterChain extends MiniFilterBase {
 			} else if ( filter.getDefaultBehaviour() == ALWAYS ) {
 				stepResult = filter.apply(context, data);
 			}
-			logger.debug( this.toString() +", step : "+filter.toString()+", continue? "+goOn+" stepResult : "+stepResult );
+			if ( logger.isDebugEnabled() ) {
+				String message = this.toString() +", step : "+filter.toString()+", continue? "+goOn+" stepResult : "+stepResult;
+				logger.debug( message );
+			}
 		}
 		if ( ex != null ) {
 			throw ex;

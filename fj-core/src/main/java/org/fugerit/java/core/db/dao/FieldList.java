@@ -20,8 +20,10 @@
  */
 package org.fugerit.java.core.db.dao;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.fugerit.java.core.db.daogen.ByteArrayDataHandler;
@@ -42,12 +44,36 @@ public class FieldList implements Serializable {
 	 */
 	private static final long serialVersionUID = 2575285768771302903L;
 
+	// code added to setup a basic conditional serialization - START
+	
+	private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		out.defaultWriteObject();
+	}
+
+	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		in.defaultReadObject();
+	}
+	
+	// code added to setup a basic conditional serialization - END
+	
 	private FieldFactory fieldFactory;
 	
     private List<Field> list;
     
+    public Field[] toArray() {
+    	return list.toArray( new Field[0] );
+    }
+    
+    public List<Field> getList() {
+    	return Collections.unmodifiableList( list );
+    }
+    
     public Field getField(int index) {
-        return (Field)this.list.get(index);
+        return this.list.get(index);
     }
     
     public int size() {
@@ -59,12 +85,12 @@ public class FieldList implements Serializable {
     }
 
     public FieldList() {
-        this( new FieldFactory() );
+        this( FieldFactory.DEFAULT );
     }
 
     public FieldList( FieldFactory fieldFactory ) {
         super();
-        this.list = new ArrayList<Field>();
+        this.list = new ArrayList<>();
         this.fieldFactory = fieldFactory;
     }
 
@@ -118,7 +144,7 @@ public class FieldList implements Serializable {
 	}
 
 	public void addField( CharArrayDataHandler value) {
-		this.addField( fieldFactory.newField( (CharArrayDataHandler)value ) );
+		this.addField( fieldFactory.newField( value ) );
 	}
 
 	public static FieldList newFieldList() {

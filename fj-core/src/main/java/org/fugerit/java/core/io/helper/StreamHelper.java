@@ -18,20 +18,24 @@
  */
 package org.fugerit.java.core.io.helper;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.Flushable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
 
+import org.fugerit.java.core.cfg.CloseHelper;
+import org.fugerit.java.core.function.SafeFunction;
+import org.fugerit.java.core.function.SimpleValue;
 import org.fugerit.java.core.io.StreamIO;
 import org.fugerit.java.core.lang.compare.ComparePrimitiveFacade;
 import org.fugerit.java.core.lang.helpers.ClassHelper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * 
@@ -42,7 +46,9 @@ import org.slf4j.LoggerFactory;
  */
 public class StreamHelper {
 
-	private static Logger logger = LoggerFactory.getLogger( StreamHelper.class );
+	public static final String SLASH = "/";
+	
+	private StreamHelper() {}
 
 	private static final String URL_HELPER = "://";
 	
@@ -58,11 +64,15 @@ public class StreamHelper {
 	
 	public static final String PATH_JNDI = MODE_JNDI+URL_HELPER;
 	
-	public static InputStream resolveStream( String path ) throws Exception {
+	public static Reader resolveReader( String path ) throws IOException {
+		return new InputStreamReader( resolveStream( path, null ) );
+	}
+	
+	public static InputStream resolveStream( String path ) throws IOException {
 		return resolveStream( path, null );
 	}
 	
-	public static InputStream resolveStream( String path, String basePath ) throws Exception {
+	public static InputStream resolveStream( String path, String basePath ) throws IOException {
 		return resolveStream( path, basePath, StreamIO.class );
 	}
 	
@@ -75,23 +85,25 @@ public class StreamHelper {
 	 * @return			the resource in stream format
 	 * @throws Exception	if something goes wrong during loading
 	 */
-	public static <T> InputStream getResourceStream( String path, Class<T> c ) throws Exception {
-		InputStream is = ClassHelper.getDefaultClassLoader().getResourceAsStream( path );
-		if ( is == null && c != null ) {
-			is = c.getResourceAsStream( path );
-		}
-		return is;
+	public static <T> InputStream getResourceStream( String path, Class<T> c ) throws IOException {
+		return HelperIOException.get( () -> {
+			InputStream is = ClassHelper.getDefaultClassLoader().getResourceAsStream( path );
+			if ( is == null && c != null ) {
+				is = c.getResourceAsStream( path );
+			}
+			return is;
+		});
 	}
 
-	public static InputStream resolveStreamByMode( String mode, String path ) throws Exception {	
+	public static InputStream resolveStreamByMode( String mode, String path ) throws IOException {	
 		return resolveStreamByMode( mode, path, StreamHelper.class );
 	}
 	
-	public static InputStream resolveStreamByMode( String mode, String path, Class<?> c ) throws Exception {	
+	public static InputStream resolveStreamByMode( String mode, String path, Class<?> c ) throws IOException {	
 		return resolveStream( mode+URL_HELPER+path, null, c );
 	}
 	
-	public static InputStream resolveStream( String path, String basePath, Class<?> c ) throws Exception {	
+	public static InputStream resolveStream( String path, String basePath, Class<?> c ) throws IOException {	
 		InputStream is = null;
 		if ( path.indexOf( PATH_CLASSLOADER ) == 0 ) {
 			// class loader
@@ -247,19 +259,7 @@ public class StreamHelper {
      * @return			<code>true</code> if the stream has been closed without exception, <code>false</code> otherwise
      */
     public static boolean closeSafe( OutputStream out, boolean flush ) {
-    	boolean closed = false;
-    	try {
-    		if ( out != null ) {
-    			if ( flush ) {
-    				out.flush();
-    			}
-    			out.close();
-    			closed = true;
-    		}
-    	} catch (IOException e) {
-    		logger.warn( "Exception closing the stream "+e, e );
-    	}
-    	return closed;
+    	return closeSafeHelper( out, flush );
     }
     
     /**
@@ -269,16 +269,7 @@ public class StreamHelper {
      * @return			<code>true</code> if the stream has been closed without exception, <code>false</code> otherwise
      */
     public static boolean closeSafe( InputStream in ) {
-    	boolean closed = false;
-    	try {
-    		if ( in != null ) {
-    			in.close();
-    			closed = true;
-    		}
-    	} catch (IOException e) {
-    		logger.warn( "Exception closing the stream "+e, e );
-    	}
-    	return closed;
+    	return CloseHelper.closeSilent( in );
     }    
     
     /**
@@ -299,19 +290,7 @@ public class StreamHelper {
      * @return			<code>true</code> if the writer has been closed without exception, <code>false</code> otherwise
      */
     public static boolean closeSafe( Writer out, boolean flush ) {
-    	boolean closed = false;
-    	try {
-    		if ( out != null ) {
-    			if ( flush ) {
-    				out.flush();
-    			}
-    			out.close();
-    			closed = true;
-    		}
-    	} catch (IOException e) {
-    		logger.warn( "Exception closing the writer "+e, e );
-    	}
-    	return closed;
+    	return closeSafeHelper( out, flush );
     }
     
     /**
@@ -321,16 +300,20 @@ public class StreamHelper {
      * @return			<code>true</code> if the reader has been closed without exception, <code>false</code> otherwise
      */
     public static boolean closeSafe( Reader in ) {
-    	boolean closed = false;
-    	try {
-    		if ( in != null ) {
-    			in.close();
-    			closed = true;
-    		}
-    	} catch (IOException e) {
-    		logger.warn( "Exception closing the reader "+e, e );
-    	}
-    	return closed;
-    }      
+    	return CloseHelper.closeSilent( in );
+    }  
     
+    private static boolean closeSafeHelper( Closeable out, boolean flush ) {
+    	SimpleValue<Boolean> res = new SimpleValue<>( false );
+    	SafeFunction.applySilent( () ->
+    		SafeFunction.applyIfNotNull( out , () -> { 
+        		if ( flush && out instanceof Flushable )
+        			((Flushable)out).flush();
+        		out.close();
+        		res.setValue( true );
+        	} )
+    	);
+    	return res.getValue();
+    }
+   
 }

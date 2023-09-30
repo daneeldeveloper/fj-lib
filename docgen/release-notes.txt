@@ -1,4 +1,152 @@
-﻿0.8.3 (2022-11-26)
+﻿See new [CHANGELOG](https://github.com/fugerit-org/fj-lib/blob/main/CHANGELOG.md) for details.
+
+2023-09.1 (2023-09-04)
+----------------------
++ Fix to security alerts
+
+8.2.1 (2023-08-29)
+------------------
++ [fix][fj-core] fix TransformerXML.newSafeTransformerFactory() bug [8.2.1-rc.1]
++ [fix][fj-tool] fixed fixed-config-extract parsing [8.2.1-rc.1]
++ [enhancement][fj-lib] updated fj-bom version to 1.2.5 [8.2.1-rc.1]
++ [enhancement][fj-core][fj-tool] Added test coverage [8.2.1-rc.1]
+
+8.2.0 (2023-08-24)
+------------------
++ [enhancement][fj-core-jvfs] db classes generated with the fj-daogen-maven-plugin [8.2.0-rc.7]
++ [enhancement][fj-core] fixed all major sonar cloud issues [8.2.0-rc.7]
++ [enhancement][fj-core] loadConfigSafe() method introduced for property catalog [8.2.0-rc.6]
++ [enhancement][fj-core] JavaGenerator generate() throw chaanged from Exception to IOException [8.2.0-rc.6]
++ [enhancement][fj-core] update fj-test-helper8 version to 0.3.1 (serialization support) (support for serialization test) [8.2.0-rc.6]
++ [enhancement][fj-core] added utilities to close Closeable and AutoCloseable [8.2.0-rc.5]
++ [enhancement][fj-core] conversion utilities for ConfigException and ConfigRuntimeException [8.2.0-rc.3]
++ [enhancement][to reduce hierarchy depth, if the correct interfaces have been used, this should have no impact] :
++ [enhancement][fj-core] Changed hierarchy of GenericListCatalogConfig to directly extends AbstractConfigurableObject [8.2.0-rc.1]
++ [enhancement][fj-core] Changed hierarchy of AbstractConfigurableObject to directly extends Object [8.2.0-rc.1]
+
+8.1.0 (2023-08-20)
+------------------
++ [enhancement][fj-core] Added factory methods for XMLConfigurableObject [8.1.0-rc.2]
++ [enhancement][fj-core] Facilities for converting exceptions [8.1.0-rc.1]
++ [enhancement][fj-lib] [added sonar cloud quality gate](https://github.com/fugerit-org/fj-lib/issues/21) [8.1.0-rc.1]
+
+8.0.13 (2023-08-01)
+------------------
++ Added accessor for ConfigProvider in AbstractConfigurableObject
+
+8.0.12-rc.001 (2023-07-31)
+------------------
++ Fixed MiniFilterConfig load compatibility
+
+8.0.11-rc.002 (2023-07-14)
+------------------
++ Added MiniFilterMap
++ Updated bom to 1.2.3
+
+8.0.9 (2023-03-29)
+------------------
++ Parameter set in DAOHelper set to TRACE
+
+8.0.8 (2023-03-29)
+------------------
++ Improved DAOUtilsNG debugging
+
+8.0.7 (2023-03-29)
+------------------
++ Further improved BasicDAOHelper debugging
+
+8.0.5 (2023-03-28)
+------------------
++ Improved BasicDAOHelper debugging
+
+8.0.4 (2023-03-26)
+------------------
++ changed fj-bom version to 1.0.0
++ [As for the new parent version, building should be done using java11+](https://github.com/fugerit-org/fj-bom/issues/11)
++ maven.compiler.release property set to '8' (so the project is still compatible with java8+)
++ Introduced project lombok
+
+8.0.3 (2023-03-25)
+------------------
++ [j2ee dependant api deprecation](https://github.com/fugerit-org/fj-lib/issues/19)
++ changed fj-bom version to 0.2.3
++ changed inner dependancy of submodules from project.version to fj-version
+
+8.0.2 (2023-03-25)
+------------------
++ [j2ee dependant api deprecation](https://github.com/fugerit-org/fj-lib/issues/19)
+
+8.0.1 (2023-03-19)
+------------------
++ [Moving github pages to main branch, documenting QueryHelper api](https://github.com/fugerit-org/fj-lib/issues/17)
++ Extensions method to SelectHelper, and junit
+
+8.0.0 (2023-03-18)
+------------------
++ [Added config store facilities](https://github.com/fugerit-org/fj-lib/issues/14)
++ [Dropping the 0 version (next release will not be 0.8.14 but 8.0.0](https://github.com/fugerit-org/fj-lib/issues/15)
+
+0.8.13 (2023-02-26)
+------------------
++ [Added unsafe loading for factory type](https://github.com/fugerit-org/fj-doc/issues/31)
+
+0.8.12 (2023-01-28)
+------------------
++ fix to jvfs copy (files with no null input streams were not copied)
+
+0.8.11 (2023-01-28)
+------------------
++ fix to jvfs copy (files with no null input streams were not copied)
+
+0.8.10 (2023-01-28)
+------------------
++ [fj-core-jvfs fix input stream retriave in db jmount](https://github.com/fugerit-org/fj-lib/issues/12)
+
+0.8.9 (2023-01-27)
+------------------
++ [Develop a config provider feature for external configuration source](https://github.com/fugerit-org/fj-lib/issues/10)
+
+0.8.8 (2023-01-22)
+------------------
++ Rename JFile implementation
+
+0.8.7 (2023-01-21)
+------------------
++ Refactoring of jvfs as a new maven module (fj-core-jvfs)
+* Refcatoring of test classes to module fj-test-helper8
+
+0.8.6-jvfs4 (2023-01-20)
+------------------
++ Added db script for daogen jfile mount
++ Added JFileCopyFacade
+
+0.8.6-jvfs2 (2023-01-19)
+------------------
++ Removed system out
+
+0.8.6-jvfs1 (2023-01-17)
+------------------
++ Added java virtual file system utilities (JVFS)
++ JVFS Support for file system (read/write)
++ JVFS Support for class loader (read only)
++ JVFS Support for database (read/write) [DAO generated with Mars fj-daogen API](https://github.com/fugerit-org/fj-daogen)
++ Added methods for accessing startTime and previousCheckpoint data in Checkpoints
++ Added testing utilities
+
+0.8.6 (2022-12-28)
+------------------
++ Collections merge utility
++ Result errors and warning accessory methods
+
+0.8.5 (2022-12-20)
+------------------
++ Added java major version check utilities
+
+0.8.4 (2022-12-08)
+------------------
++ Added some Exception and RuntimeException utilities
+
+0.8.3 (2022-11-26)
 ------------------
 + Added ObjectUtils.objectWithDefault() function
 + Added options to create a ParamI18N loading keys from a different bundle than the main property key

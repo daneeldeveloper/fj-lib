@@ -2,9 +2,9 @@ package org.fugerit.java.core.javagen;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.Properties;
@@ -94,7 +94,7 @@ public abstract class SimpleJavaGenerator extends BasicJavaGenerator {
 	}
 	
 	@Override
-	public void generate() throws Exception {
+	public void generate() throws IOException {
 		this.getWriter().println( "package "+this.getPackageName()+";" );
 		this.getWriter().println();
 		if ( !this.getImportList().isEmpty() ) {
@@ -140,21 +140,21 @@ public abstract class SimpleJavaGenerator extends BasicJavaGenerator {
 		this.beforeClass();
 		this.getWriter().println( "public "+this.getJavaStyle()+" "+this.getJavaName()+impl+" {" );
 		this.getWriter().println();
-		this.customPartWorker( CUSTOM_CODE_START , CUSTOM_CODE_END, "	" );
+		this.customPartWorker( CUSTOM_CODE_START , CUSTOM_CODE_END, "\t" );
 		this.generateBody();
 		this.getWriter().println( "}" );
 	}
 	
-	public abstract void generateBody() throws Exception;
+	public abstract void generateBody() throws IOException;
 	
-	protected void customPartWorker( String startTag, String endTag, String indent ) throws FileNotFoundException, IOException {
+	protected void customPartWorker( String startTag, String endTag, String indent ) throws IOException {
 		if ( !this.isNoCustomComment() ) {
 			customPartWorker( this.getJavaFile(), this.getWriter(), startTag, endTag, indent );
 		}
 	}
 	
 	protected void addSerialVerUID() throws IOException {
-		String baseData = "	private static final long serialVersionUID = ";
+		String baseData = "\tprivate static final long serialVersionUID = ";
 		String fullData = null;
 		if ( this.getJavaFile().exists() ) {
 			try ( BufferedReader reader = new BufferedReader( new FileReader( this.getJavaFile() ) ) ) {
@@ -168,7 +168,8 @@ public abstract class SimpleJavaGenerator extends BasicJavaGenerator {
 			}
 		}
 		if ( fullData == null ) {
-			fullData = baseData + (long)(Math.random()*1000000000000L)+"L;";
+			SecureRandom random = new SecureRandom();
+			fullData = baseData + (long)(random.nextDouble()*1000000000000L)+"L;";
 		}
 		this.getWriter().println( fullData );
 		this.getWriter().println();

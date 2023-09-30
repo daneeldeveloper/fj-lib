@@ -12,23 +12,23 @@ public abstract class MiniFilterBase implements MiniFilter {
 		return UUID.randomUUID().toString();
 	}
 	
-	protected static Logger logger = LoggerFactory.getLogger( MiniFilter.class );
+	protected static Logger logger = LoggerFactory.getLogger( MiniFilterBase.class );
 
-	public MiniFilterBase( String key, String description, int defaultBehaviour ) {
+	protected MiniFilterBase( String key, String description, int defaultBehaviour ) {
 		this.key = key;
 		this.description = description;
 		this.defaultBehaviour = defaultBehaviour;
 	}
 	
-	public MiniFilterBase( String key, int defaultBehaviour ) {
+	protected MiniFilterBase( String key, int defaultBehaviour ) {
 		this( key, key, defaultBehaviour );
 	}
 	
-	public MiniFilterBase( int defaultBehaviour ) {
+	protected MiniFilterBase( int defaultBehaviour ) {
 		this( genKey(), defaultBehaviour );
 	}
 	
-	public MiniFilterBase() {
+	protected MiniFilterBase() {
 		this.defaultBehaviour = MiniFilter.CONTINUE;
 	}
 	
@@ -105,8 +105,5 @@ public abstract class MiniFilterBase implements MiniFilter {
 		this.description = description;
 		this.defaultBehaviour = defaultBehaviour.intValue();
 	}
-
-	@Override
-	public abstract int apply(MiniFilterContext context, MiniFilterData data) throws Exception;
 	
 }

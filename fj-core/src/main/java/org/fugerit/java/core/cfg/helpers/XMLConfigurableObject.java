@@ -21,8 +21,12 @@
 package org.fugerit.java.core.cfg.helpers;
 
 import java.util.Properties;
+import java.util.function.Consumer;
 
 import org.fugerit.java.core.cfg.ConfigException;
+import org.w3c.dom.Element;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>Base class for implementations of ConfigurableObject supporting only
@@ -32,6 +36,7 @@ import org.fugerit.java.core.cfg.ConfigException;
  * @author Fugerit
  *
  */
+@Slf4j
 public abstract class XMLConfigurableObject extends AbstractConfigurableObject {
 
 	/*
@@ -39,6 +44,18 @@ public abstract class XMLConfigurableObject extends AbstractConfigurableObject {
 	 */
 	private static final long serialVersionUID = -3032211194907648543L;
 
+	public static XMLConfigurableObject newXMLConfigurableObject( Consumer<Element> configureFun ) {
+		return new XMLConfigurableObject() {	
+			private static final long serialVersionUID = 7207919744441264730L;
+			@Override
+			public void configure(Element tag) throws ConfigException {
+				configureFun.accept(tag);
+			}
+		};
+	}
+	
+	public static final XMLConfigurableObject DO_NOTHING = newXMLConfigurableObject( e -> log.debug( "do nothing impl , param element : {}" , e) );
+				
 	/* (non-Javadoc)
 	 * @see org.fugerit.java.core.cfg.ConfigurableObject#configure(java.util.Properties)
 	 */

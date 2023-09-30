@@ -10,13 +10,14 @@ import org.fugerit.java.core.util.PropertyEntry;
 import org.fugerit.java.core.validator.ValidatorCatalog;
 import org.fugerit.java.core.validator.ValidatorDate;
 import org.fugerit.java.core.validator.ValidatorResult;
+import org.junit.Assert;
 import org.junit.Test;
 
 import test.org.fugerit.java.BasicTest;
 
 public class TestValidatorCatalog extends BasicTest {
 
-	private final static String CONFIG_PATH = "cl://core/validator/validator-catalog-test.xml";
+	private static final String CONFIG_PATH = "cl://core/validator/validator-catalog-test.xml";
 
 	private static ValidatorCatalog catalog = null;
 	static {
@@ -24,6 +25,20 @@ public class TestValidatorCatalog extends BasicTest {
 			catalog = ValidatorCatalog.init( CONFIG_PATH );
 		} catch (ConfigException e) {
 			logger.info( "Errore init : "+e, e );
+		}
+	}
+	
+	@Test
+	public void testSerialization() {
+		try {
+			ValidatorCatalog loadedCatalog = (ValidatorCatalog) this.fullSerializationTest( catalog );
+			ValidatorResult result = new ValidatorResult();
+			String label = "test label 1 (valid)";
+			String value = "test value one";
+			boolean valid = loadedCatalog.validate( "testRegexValidator" , result, Locale.ENGLISH, label, value, label, new Properties() );
+			Assert.assertTrue(valid);
+		} catch (Exception e) {
+			this.failEx(e);
 		}
 	}
 	
@@ -35,9 +50,7 @@ public class TestValidatorCatalog extends BasicTest {
 				fail( "Expected:"+expected+" != Result:"+valid );
 			}
 		} catch (Exception e) {
-			String message = "Error : "+e;
-			logger.error( message, e );
-			fail( message );
+			this.failEx(e);
 		}
 	}
 	

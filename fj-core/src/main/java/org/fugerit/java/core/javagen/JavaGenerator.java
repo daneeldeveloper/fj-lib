@@ -4,10 +4,10 @@ import java.io.IOException;
 
 public interface JavaGenerator {
 
-	public abstract void generate() throws Exception;
+	void generate() throws IOException;
 	
-	public String getContent();
+	String getContent();
 	
-	public void write() throws IOException;
+	void write() throws IOException;
 	
 }

@@ -1,25 +1,21 @@
 package org.fugerit.java.core.db.daogen;
 
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SimpleServiceResult<T> implements Serializable {
+import org.fugerit.java.core.util.result.Result;
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -3770076676911041800L;
+public class SimpleServiceResult<T> {
+
+	public static final int DEFAULT_OK = Result.RESULT_CODE_OK;
+	public static final int DEFAULT_KO = Result.RESULT_CODE_KO;
 	
-	public final static int DEFAULT_OK = BasicDaoResult.RESULT_CODE_OK;
-	public final static int DEFAULT_KO = BasicDaoResult.RESULT_CODE_KO;
+	public static final String INFO_RESULT = "result";
+	public static final String INFO_RESULT_MESSAGE = "resultMessage";
 	
-	public final static String INFO_RESULT = "result";
-	public final static String INFO_RESULT_MESSAGE = "resultMessage";
-	
-	public final static String INFO_ESITO_OK_NO_DATA_FOUND = String.valueOf( 2 );
-	public final static String INFO_ESITO_OK_MULTIPLE_RESULTS = String.valueOf( 3 );
+	public static final String INFO_ESITO_OK_NO_DATA_FOUND = String.valueOf( 2 );
+	public static final String INFO_ESITO_OK_MULTIPLE_RESULTS = String.valueOf( 3 );
 	
 	public void addInfoEsito( String result, String resultMessage ) {
 		this.getInfo().put( INFO_RESULT , result );
@@ -80,7 +76,7 @@ public class SimpleServiceResult<T> implements Serializable {
 	}
 
 	public SimpleServiceResult() {
-		
+		this( null );
 	}
 	
 	public Map<String, Object> getInfo() {
@@ -90,16 +86,16 @@ public class SimpleServiceResult<T> implements Serializable {
 	public static <T> SimpleServiceResult<T> newDefaultResult( T data ) {
 		SimpleServiceResult<T> res = null;
 		if ( data == null ) {
-			res = new SimpleServiceResult<T>( DEFAULT_KO );
+			res = new SimpleServiceResult<>( DEFAULT_KO );
 		} else if ( data instanceof Collection ) {
 			Collection<?> c = (Collection<?>) data;
 			if ( c.isEmpty() ) {
-				res = new SimpleServiceResult<T>( DEFAULT_KO );	
+				res = new SimpleServiceResult<>( DEFAULT_KO );	
 			} else {
-				res = new SimpleServiceResult<T>( DEFAULT_OK, data );
+				res = new SimpleServiceResult<>( DEFAULT_OK, data );
 			}
 		} else {
-			res = new SimpleServiceResult<T>( DEFAULT_OK, data );
+			res = new SimpleServiceResult<>( DEFAULT_OK, data );
 		}
 		return res;
 	}

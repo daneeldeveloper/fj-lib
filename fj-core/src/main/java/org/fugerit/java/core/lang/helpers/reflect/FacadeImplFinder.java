@@ -1,19 +1,13 @@
 package org.fugerit.java.core.lang.helpers.reflect;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 import org.fugerit.java.core.lang.annotate.DefineImplFinder;
 
-public class FacadeImplFinder implements Serializable {
+public class FacadeImplFinder  {
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 2952618477529786064L;
-	
 	private List<ImplFinder> finderList;
 	
 	public static FacadeImplFinder newFacadeDefault() {
@@ -21,7 +15,7 @@ public class FacadeImplFinder implements Serializable {
 	}
 	
 	public FacadeImplFinder() {
-		this.finderList = new ArrayList<ImplFinder>();
+		this.finderList = new ArrayList<>();
 	}
 	
 	public FacadeImplFinder( ImplFinder defaultFinder ) {
@@ -41,7 +35,7 @@ public class FacadeImplFinder implements Serializable {
 		this.finderList.remove( finder );
 	}
 	
-	public ImplFinder getFinderFor( Class<?> c ) throws Exception {
+	public ImplFinder getFinderFor( Class<?> c ) {
 		ImplFinder finder = null;
 		Iterator<ImplFinder> it = this.finders();
 		while ( finder == null && it.hasNext() ) {
@@ -53,11 +47,11 @@ public class FacadeImplFinder implements Serializable {
 		return finder;
 	}
 	
-	public boolean hasFinderFor( Class<?> c ) throws Exception {
+	public boolean hasFinderFor( Class<?> c ) {
 		return (this.getFinderFor( c ) != null);
 	}
 	
-	public Class<?> findImpl( Class<?> c ) throws Exception {
+	public Class<?> findImpl( Class<?> c ) {
 		Class<?> ret = c;
 		ImplFinder finder = this.getFinderFor( c );
 		if ( finder != null ) {

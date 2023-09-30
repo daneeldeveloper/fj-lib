@@ -16,51 +16,32 @@ public class DefaultPagedResult<T> extends AbstractPagedResult<T>  implements Se
 	
 	private String virtualKey;
 	
-	/*
-	 * <p>Creates a new paged result</p>
+	/**
+	 * Creates a new PagedResult
 	 * 
-	 * @param perPage			maximum number of elements in a page
-	 * @param elementCount		total number of elements in all pages
-	 * @param currentPage		current page ( range 1 - n )
-	 * @param pageElements		elements in the current page
-	 * @return					a new paged result
+	 * @param <T>			the parameter type
+	 * @param perPage		the number of element per page
+	 * @param elementCount	the total element count
+	 * @param currentPage	the current element
+	 * @param pageElements	the content of the current page
+	 * @return				the paged result
 	 */
 	public static <T> PagedResult<T>  newPagedResult( int perPage, long elementCount, int currentPage, List<T> pageElements ) {
-		int pageCount = calcPageCount( elementCount, perPage );
-		AbstractPagedResult<T> result = new DefaultPagedResult<T>( perPage, elementCount, currentPage, pageCount, pageElements, perPage, currentPage, null );
-		return result;
+		return new DefaultPagedResult<>( perPage, elementCount, currentPage, pageElements, perPage, currentPage, null );
 	}
 	
-	/*
-	 * <p>Creates a new paged result</p>
-	 * 
-	 * @param perPage			maximum number of elements in a page
-	 * @param elementCount		total number of elements in all pages
-	 * @param currentPage		current page ( range 1 - n )
-	 * @param pageElements		elements in the current page
-	 * @return					a new paged result
-	 */
 	public static <T> PagedResult<T>  newPagedResult( int perPage, long elementCount, int currentPage, List<T> pageElements, int realPerPage, int realCurrentPage, String virtualKey ) {
-		int pageCount = calcPageCount( elementCount, perPage );
-		AbstractPagedResult<T> result = new DefaultPagedResult<T>( perPage, elementCount, currentPage, pageCount, pageElements, realPerPage, realCurrentPage, virtualKey );
-		return result;
+		return new DefaultPagedResult<>( perPage, elementCount, currentPage, pageElements, realPerPage, realCurrentPage, virtualKey );
 	}
 	
-	/*
-	 * PagedResult per esisti negativi.
-	 * 
-	 * @param &lt;T&gt;
-	 * @param resultCode
-	 * @return
-	 */
-	protected static <T>  PagedResult<T>  newPagedResult( int resultCode ) {
-		DefaultPagedResult<T> result = new DefaultPagedResult<T>( -1, -1, -1, -1, null, -1, -1, null );
+	public static <T>  PagedResult<T>  newPagedResult( int resultCode ) {
+		DefaultPagedResult<T> result = new DefaultPagedResult<>( -1, -1, -1, null, -1, -1, null );
 		result.setResultCode( resultCode );
 		return result;
 	}
 	
-	protected DefaultPagedResult(int perPage, long elementCount, int currentPage, int pageCount, List<T> pageElements, int realPerPage, int realCurrentPage, String virtualKey) {
-		super(perPage, elementCount, currentPage, pageCount, pageElements);
+	protected DefaultPagedResult(int perPage, long elementCount, int currentPage, List<T> pageElements, int realPerPage, int realCurrentPage, String virtualKey) {
+		super(perPage, elementCount, currentPage, calcPageCount( elementCount, perPage ), pageElements);
 		this.realCurrentPage = realCurrentPage;
 		this.realPerPage = realPerPage;
 		this.virtualKey = virtualKey;
@@ -99,7 +80,10 @@ public class DefaultPagedResult<T> extends AbstractPagedResult<T>  implements Se
 		int offset =  ((this.getRealCurrentPage()-1)*this.getRealPerPage());
 		int virtualStart = (currentPage-1)*this.getPerPage()-offset;
 		int virtualEnd = virtualStart+this.getPerPage();
-		this.getLogger().debug( "current page : "+currentPage+" size : "+this.getCurrentPageSize()+" vs : "+virtualStart+" ve : "+virtualEnd+" rps:"+this.getRealPerPage()+" , rp:"+this.getRealCurrentPage() );
+		if ( this.getLogger().isDebugEnabled() ) {
+			String message = "current page : "+currentPage+" size : "+this.getCurrentPageSize()+" vs : "+virtualStart+" ve : "+virtualEnd+" rps:"+this.getRealPerPage()+" , rp:"+this.getRealCurrentPage();
+			this.getLogger().debug( message );
+		}
 		List<T> elements = this.getPageElementsList().subList( virtualStart , virtualEnd );
 		return newPagedResult( this.getPerPage(), this.getElementCount(), currentPage, elements );
 	}

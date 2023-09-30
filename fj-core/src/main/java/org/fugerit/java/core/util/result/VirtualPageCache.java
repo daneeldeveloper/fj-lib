@@ -2,6 +2,7 @@ package org.fugerit.java.core.util.result;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.fugerit.java.core.log.BasicLogObject;
 
@@ -13,13 +14,13 @@ public class VirtualPageCache<T> extends BasicLogObject implements Serializable 
 	private static final long serialVersionUID = -6408904239036858385L;
 
 	public VirtualPageCache() {
-		this.cache = new HashMap<String, CacheWrapper<T>>();
+		this.cache = new HashMap<>();
 	}
 	
-	private HashMap<String, CacheWrapper<T>> cache;
+	private transient HashMap<String, CacheWrapper<T>> cache;
 	
 	// 12 hours
-	private final static long DEFAULT_TTL = 12*60*60*1000;
+	private static final long DEFAULT_TTL = TimeUnit.MILLISECONDS.convert( 12, TimeUnit.HOURS ); // was 12*60*60*1000L
 	
 	// <code>true</code> it the wrapper is still valid
 	private boolean checkTtl( CacheWrapper<T> wrapper ) {
@@ -42,7 +43,7 @@ public class VirtualPageCache<T> extends BasicLogObject implements Serializable 
 		String virtualKey = finder.getSearchVirtualKey();
 		String key = this.buildPageKey(virtualKey, currentPage);
 		CacheWrapper<T> wrapper = this.cache.get( key );
-		this.getLogger().debug( "WRAPPER : "+wrapper );
+		this.getLogger().debug( "WRAPPER : {}", wrapper );
 		PagedResult<T> page = null;
 		if ( wrapper != null ) {
 			if ( this.checkTtl( wrapper ) ) {
@@ -58,8 +59,8 @@ public class VirtualPageCache<T> extends BasicLogObject implements Serializable 
 		int currentPage = bufferPage.getRealCurrentPage();
 		String virtualKey = bufferPage.getVirtualSearchKey();
 		String key = this.buildPageKey(virtualKey, currentPage);
-		this.getLogger().debug( "ADD TO CACHE : "+key );
-		this.cache.put( key , new CacheWrapper<T>( bufferPage ) );
+		this.getLogger().debug( "ADD TO CACHE : {}", key );
+		this.cache.put( key , new CacheWrapper<>( bufferPage ) );
 	}
 	
 }
@@ -79,19 +80,9 @@ class CacheWrapper<T> {
 	public PagedResult<T> getPage() {
 		return page;
 	}
-
-	public void setPage(PagedResult<T> page) {
-		this.page = page;
-	}
-
+	
 	public long getCacheTime() {
 		return cacheTime;
 	}
 
-	public void setCacheTime(long cacheTime) {
-		this.cacheTime = cacheTime;
-	}
-	
-	
-	
 }

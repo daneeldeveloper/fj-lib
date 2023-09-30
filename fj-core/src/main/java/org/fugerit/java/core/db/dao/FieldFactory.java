@@ -20,6 +20,8 @@
  */
 package org.fugerit.java.core.db.dao;
 
+import java.io.IOException;
+import java.io.Serializable;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -34,9 +36,13 @@ import org.fugerit.java.core.db.helpers.DAOID;
  *
  * Fugerit
  */
-public class FieldFactory {
+public class FieldFactory implements Serializable {
 
-    /*
+    private static final long serialVersionUID = 5728095010620830481L;
+    
+    public static final FieldFactory DEFAULT = new FieldFactory();
+
+	/*
      * <p>Crea una nuova istanza di FieldFactory.</p>
      *
      * 
@@ -48,7 +54,7 @@ public class FieldFactory {
 	public Field newField(String value, int type) {
 		Field field = null;
 		if ( value!=null ) {
-			field = (new StringField(value));
+			return (new GenericField<String>(value, type));
 		} else {
 			field = this.nullField( type );
 		}
@@ -56,17 +62,17 @@ public class FieldFactory {
 	}
 
 	public Field newField(long value, int type) {
-		return (new LongField(value));
+		return (new GenericField<Long>(value, type));
 	}
     
 	public Field newField(int value, int type) {
-		return (new IntField(value));
+		return (new GenericField<Integer>(value, type));
 	}
 
 	public Field newField(DAOID value) {
 		Field field = null;
 		if ( value!=null ) {
-			field = this.newField( value.longValue() );
+			field = new GenericField<Long>( value.longValue() );
 		} else {
 			field = this.nullField( Types.BIGINT );
 		}
@@ -76,11 +82,11 @@ public class FieldFactory {
 	public Field newField(Object value, int type) {
 		Field field = null;
 		if ( value instanceof BlobData ) {
-			field = this.newField( (BlobData)value );
+			field = this.newField( value );
 		} else if (value instanceof DAOID) {
 			field = this.newField( (DAOID)value );
 		} else if ( value!=null ) {
-			field = (new ObjectField(value));
+			field = new GenericField<Object>(value);
 		} else {
 			field = this.nullField( type );
 		}
@@ -88,19 +94,19 @@ public class FieldFactory {
 	}
 
     public Field newField(String value) {
-        return (new StringField(value));
+        return new GenericField<String>(value);
     }
 
     public Field newField(long value) {
-        return (new LongField(value));
+        return new GenericField<Long>(value);
     }
     
     public Field newField(int value) {
-        return (new IntField(value));
+        return new GenericField<Integer>(value);
     }
     
     public Field newField(ByteArrayDataHandler value) {
-        return new BlobDataField( BlobData.valueOf( (ByteArrayDataHandler)value ) );
+        return new BlobDataField( BlobData.valueOf( value ) );
     }
     
     public Field newField(CharArrayDataHandler value) {
@@ -118,7 +124,7 @@ public class FieldFactory {
     	} else if (value instanceof DAOID) {
     		field = this.newField( (DAOID)value );
     	} else {
-			field = (new ObjectField(value));
+			field = (new GenericField<Object>(value));
     	}
         return field;
     }
@@ -126,16 +132,14 @@ public class FieldFactory {
     public Field nullField(int type) {
         return (new NullField(type));
     }    
-    
+
 }
 
-////////////////////////////////////////////////////////////////
-//        Classi implementano i Field di vari tipo            //
-////////////////////////////////////////////////////////////////
-
-class NullField extends Field {
+class NullField extends Field implements Serializable {
     
-    @Override
+    private static final long serialVersionUID = 1353453L;
+
+	@Override
     public String toString() {
         return this.getClass().getName()+"[type:"+this.value+"]";
     }    
@@ -156,45 +160,13 @@ class NullField extends Field {
     
 }
 
+class BlobDataField extends Field implements Serializable {
+    
+    private static final long serialVersionUID = -3392455269498148472L;
 
-class ObjectField extends Field {
-    
-    @Override
+	@Override
     public String toString() {
-        return this.getClass().getName()+"[value:"+this.value+", class:"+this.value.getClass().getName()+"]";
-    }    
-    
-    public ObjectField(Object value) {
-        this.value = value;
-    }
-    
-    /* (non-Javadoc)
-     * @see it.finanze.secin.shared.dao.Field#setField(java.sql.PreparedStatement, int)
-     */
-    @Override
-    public void setField(PreparedStatement ps, int index) throws SQLException {
-    	if ( this.value == null ) {
-    		ps.setObject(index, this.value);	
-    	} else if ( this.value instanceof java.sql.Date ) {
-    		ps.setDate(index, ((java.sql.Date)this.value));
-    	} else if ( this.value instanceof java.sql.Timestamp ) {
-    		ps.setTimestamp(index, ((java.sql.Timestamp)this.value));
-    	} else if ( this.value instanceof java.util.Date ) {
-    		ps.setTimestamp(index, new java.sql.Timestamp( ((java.util.Date)this.value).getTime() ) );    		
-    	} else {
-    		ps.setObject(index, this.value);
-    	}
-    }
-    
-    private Object value;
-    
-}
-
-class BlobDataField extends Field {
-    
-    @Override
-    public String toString() {
-        return this.getClass().getName()+"[value:"+this.value+"]";
+        return this.getClass().getName()+"[value:skipped for blob]";
     }   
     
     public BlobDataField(BlobData value) {
@@ -213,11 +185,29 @@ class BlobDataField extends Field {
     
 }
 
-class ClobDataField extends Field {
+class ClobDataField  extends Field implements Serializable {
     
-    @Override
+    private static final long serialVersionUID = 100284648506019470L;
+
+	// code added to setup a basic conditional serialization - START
+	
+	private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		out.defaultWriteObject();
+	}
+
+	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		in.defaultReadObject();
+	}
+	
+	// code added to setup a basic conditional serialization - END
+    
+	@Override
     public String toString() {
-        return this.getClass().getName()+"[value:"+this.value+"]";
+        return this.getClass().getName()+"[value:skipped for clob]";
     }   
     
     public ClobDataField( CharArrayDataHandler value ) {
@@ -236,71 +226,63 @@ class ClobDataField extends Field {
     
 }
 
-class StringField extends Field {
-    
-    @Override
-    public String toString() {
-        return this.getClass().getName()+"[value:"+this.value+"]";
-    }   
-    
-    public StringField(String value) {
-        this.value = value;
-    }
-    
-    /* (non-Javadoc)
-     * @see it.finanze.secin.shared.dao.Field#setField(java.sql.PreparedStatement, int)
-     */
-    @Override
-    public void setField(PreparedStatement ps, int index) throws SQLException {
-        ps.setString(index, this.value);
-    }
-    
-    private String value;
-    
-}
+class GenericField<T> extends Field implements Serializable {
 
-class LongField extends Field {
-    
-    @Override
-    public String toString() {
-        return this.getClass().getName()+"[value:"+this.value+"]";
-    }    
-    
-    public LongField(long value) {
-        this.value = value;
-    }
-    
-    /* (non-Javadoc)
-     * @see it.finanze.secin.shared.dao.Field#setField(java.sql.PreparedStatement, int)
-     */
-    @Override
-    public void setField(PreparedStatement ps, int index) throws SQLException {
-        ps.setLong(index, this.value);
-    }
-    
-    private long value;
-    
-}
+	private static final long serialVersionUID = 2328668486886550398L;
 
-class IntField extends Field {
-    
+	// code added to setup a basic conditional serialization - START
+	
+	private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		out.defaultWriteObject();
+	}
+
+	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		in.defaultReadObject();
+	}
+	
+	// code added to setup a basic conditional serialization - END
+	
+	public GenericField(T value) {
+		this( value, null );
+	}
+	
+	public GenericField(T value, Integer type) {
+		super();
+		this.value = value;
+		this.type = type;
+	}
+
+	private T value;
+	
+	private Integer type;
+	
     @Override
     public String toString() {
-        return this.getClass().getName()+"[value:"+this.value+"]";
-    }
-    
-    public IntField(int value) {
-        this.value = value;
-    }
-    
-    /* (non-Javadoc)
-     * @see it.finanze.secin.shared.dao.Field#setField(java.sql.PreparedStatement, int)
-     */
-    @Override
-    public void setField(PreparedStatement ps, int index) throws SQLException {
-        ps.setInt(index, this.value);
-    }
-    
-    private int value;
-    
+        return this.getClass().getName()+"[value:"+this.value+"type:"+this.type+"]";
+    }  
+	
+	@Override
+	public void setField(PreparedStatement ps, int index) throws SQLException {
+		if ( value instanceof String ) {
+			ps.setString(index, (String)this.value);
+		} else if ( value instanceof Long ) {
+			ps.setLong(index, (Long)this.value);
+		} else if ( value instanceof Integer ) {
+			ps.setInt(index, (Integer)this.value);
+    	} else if ( this.value instanceof java.sql.Date ) {
+    		ps.setDate(index, ((java.sql.Date)this.value));
+    	} else if ( this.value instanceof java.sql.Timestamp ) {
+    		ps.setTimestamp(index, ((java.sql.Timestamp)this.value));
+    	} else if ( this.value instanceof java.util.Date ) {
+    		ps.setTimestamp(index, new java.sql.Timestamp( ((java.util.Date)this.value).getTime() ) );  
+		} else {
+			ps.setObject( index, this.value );
+		}
+	}
+	
+	
 }

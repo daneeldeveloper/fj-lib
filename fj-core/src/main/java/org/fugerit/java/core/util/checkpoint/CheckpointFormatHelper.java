@@ -1,5 +1,6 @@
 package org.fugerit.java.core.util.checkpoint;
 
+import java.io.IOException;
 import java.io.Serializable;
 
 import org.fugerit.java.core.util.fun.StringFormat;
@@ -8,21 +9,29 @@ import org.fugerit.java.core.util.fun.helper.MillisToSecondsFormat;
 
 public class CheckpointFormatHelper implements CheckpointFormat, Serializable {
 	
-	public static final StringFormat<Number> FORMAT_TIME_DEFAULT = new StringFormat<Number>() {
-		@Override
-		public String convert(Number input) {
-			return String.valueOf( input.longValue() );
-		}
-	};
+	private static final long serialVersionUID = -3532044603092080930L;
+
+	// code added to setup a basic conditional serialization - START
+	
+	private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		out.defaultWriteObject();
+	}
+
+	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		in.defaultReadObject();
+	}
+	
+	// code added to setup a basic conditional serialization - END
+	
+	public static final StringFormat<Number> FORMAT_TIME_DEFAULT = input -> String.valueOf( input.longValue() );
 	
 	public static final StringFormat<Number> FORMAT_TIME_NICE = FormatTime.DEFAULT;
 	
-	public static final StringFormat<Number> FORMAT_DURATION_DEFAULT = new StringFormat<Number>() {
-		@Override
-		public String convert(Number input) {
-			return String.valueOf( input.longValue() )+"ms";
-		}
-	};
+	public static final StringFormat<Number> FORMAT_DURATION_DEFAULT = input ->  String.valueOf( input.longValue() )+"ms";
 	
 	public static final StringFormat<Number> FORMAT_DURATION_NICE = MillisToSecondsFormat.INSTANCE_APPEND_SECOND;
 	
@@ -30,14 +39,9 @@ public class CheckpointFormatHelper implements CheckpointFormat, Serializable {
 	
 	public static final CheckpointFormat DEFAULT_DECORATION = new CheckpointFormatHelper( FORMAT_TIME_NICE , FORMAT_DURATION_NICE );
 	
-	public final static String TOKEN_START_DEF = "[";
-	public final static String TOKEN_END_DEF = "]";
-	public final static String TOKEN_SEPARATOR_DEF = ",";
-	
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 134289656334324324L;
+	public static final String TOKEN_START_DEF = "[";
+	public static final String TOKEN_END_DEF = "]";
+	public static final String TOKEN_SEPARATOR_DEF = ",";
 
 	public void formatDataHelperDefault( StringBuilder builder, CheckpointData data ) {
 		builder.append( this.tokenStart() );

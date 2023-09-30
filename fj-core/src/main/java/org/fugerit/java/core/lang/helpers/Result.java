@@ -1,7 +1,10 @@
 package org.fugerit.java.core.lang.helpers;
 
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -10,9 +13,14 @@ import java.util.List;
  * @author Fugerit
  *
  */
-public class Result {
+public class Result implements Serializable {
 
-	   private void printList( List<Exception> v, PrintStream stream) {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 5022803261949916909L;
+
+	private void printList( List<Exception> v, PrintStream stream) {
 	        for (int k=0; k<v.size(); k++) {
 	            stream.println(""+(k+1)+" - "+v.get(k));
 	        }
@@ -69,15 +77,15 @@ public class Result {
 	    }
 	    
 	    public Exception getWarning(int index) {
-	        return (Exception)this.warningList.get(index);
+	        return this.warningList.get(index);
 	    }
 	    
 	    public Exception getFatal(int index) {
-	        return (Exception)this.fatalList.get(index);
+	        return this.fatalList.get(index);
 	    }    
 	    
 	    public Exception getError(int index) {
-	        return (Exception)this.errorList.get(index);
+	        return this.errorList.get(index);
 	    }
 	    
 	    private List<Exception> errorList;
@@ -91,9 +99,26 @@ public class Result {
 	     */
 	    public Result() {
 	        super();
-	        this.errorList = new ArrayList<Exception>();
-	        this.fatalList = new ArrayList<Exception>();
-	        this.warningList = new ArrayList<Exception>();
+	        this.errorList = new ArrayList<>();
+	        this.fatalList = new ArrayList<>();
+	        this.warningList = new ArrayList<>();
 	    }
-	
+	    
+	    public Collection<Exception> errors() {
+	    	return Collections.unmodifiableCollection( this.errorList );
+	    }
+
+	    public Collection<Exception> fatals() {
+	    	return Collections.unmodifiableCollection( this.fatalList );
+	    }
+	    
+	    public Collection<Exception> warnings() {
+	    	return Collections.unmodifiableCollection( this.warningList );
+	    }
+	    
+
+	    public Collection<Exception> fatalsAndErrors() {
+	    	return Collections.unmodifiableCollection( CollectionUtils.merge( new ArrayList<Exception>( this.fatalList ) ,  this.errorList ) );
+	    }
+	    
 }

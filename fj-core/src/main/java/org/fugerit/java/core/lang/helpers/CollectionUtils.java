@@ -1,9 +1,12 @@
 package org.fugerit.java.core.lang.helpers;
 
 import java.util.Collection;
+import java.util.Iterator;
 
 public class CollectionUtils {
 
+	private CollectionUtils() {}
+	
 	/**
 	 * Check if a collection is <code>null</code> or empty.
 	 * 
@@ -46,4 +49,18 @@ public class CollectionUtils {
 		return added;
 	}
 	
+	public static <T> Collection<T> merge( Collection<T> merged, Collection<T> toAdd ) {
+		if ( toAdd != null ) {
+			merged.addAll( toAdd );
+		}
+		return merged;
+	}
+
+	public static <T> void fill( Collection<T> c, Iterator<T> it ) {
+		while ( it.hasNext() ) {
+			c.add( it.next() );
+		}
+	}
+	
 }
+

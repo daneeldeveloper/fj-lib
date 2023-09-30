@@ -1,5 +1,6 @@
 package org.fugerit.java.core.fixed.parser;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -11,13 +12,12 @@ import org.fugerit.java.core.fixed.parser.helper.ReaderFixedFieldFileReader;
 import org.fugerit.java.core.fixed.parser.helper.StreamFixedFieldFileReader;
 import org.fugerit.java.core.lang.helpers.StringUtils;
 
-public class FixedFieldFileReader {
+public class FixedFieldFileReader implements Closeable {
 	
 	private FixedFieldFileReaderAbstract readerImpl;
 	
 	public static final FixedFieldFileReader newInstance( FixedFieldFileDescriptor descriptor, Reader r ) throws IOException {
-		FixedFieldFileReader reader = new FixedFieldFileReader( descriptor, r );
-		return reader;
+		return new FixedFieldFileReader( descriptor, r );
 	}
 	
 	public static final FixedFieldFileReader newInstance( FixedFieldFileDescriptor descriptor, InputStream is ) throws IOException {
@@ -56,7 +56,7 @@ public class FixedFieldFileReader {
 	}
 	
 	public void close() throws IOException {
-		this.readerImpl.close();;
+		this.readerImpl.close();
 	}
 
 	public FixedFieldFileDescriptor getDescriptor() {

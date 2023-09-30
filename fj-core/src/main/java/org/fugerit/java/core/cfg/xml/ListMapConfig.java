@@ -5,16 +5,29 @@ import java.util.Properties;
 
 import org.fugerit.java.core.util.collection.KeyMapper;
 import org.fugerit.java.core.util.collection.KeyObject;
+import org.fugerit.java.core.util.collection.ListMapConfigurable;
 import org.fugerit.java.core.util.collection.ListMapStringKey;
 import org.fugerit.java.core.xml.dom.DOMUtils;
 import org.w3c.dom.Element;
 
-public class ListMapConfig<T> extends ListMapStringKey<T> implements IdConfigType, KeyObject<String> {
+public class ListMapConfig<T> extends ListMapStringKey<T> implements IdConfigType, KeyObject<String>, ListMapConfigurable {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = -1229366094851449578L;
+
+	@Override
+	public int hashCode() {
+		// super class implementation is ok
+		return super.hashCode();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		// super class implementation is ok - ListMapConfig is equals if all contained elements are equals
+		return super.equals(o);
+	}
 
 	private Properties config = new Properties();
 	
@@ -38,10 +51,12 @@ public class ListMapConfig<T> extends ListMapStringKey<T> implements IdConfigTyp
 		super(keyMapper);
 	}
 
+	@Override
 	public Properties getConfig() {
 		return config;
 	}
-
+	
+	@Override
 	public void initFromElementAttributes( Element tag ) {
 		DOMUtils.attributesToProperties( tag , this.getConfig() );
 	}

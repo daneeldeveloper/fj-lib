@@ -14,8 +14,8 @@ import java.io.Writer;
  */
 public class CustomPrintWriter extends PrintWriter {
 	
-	public final static String WINDOWS_LINE_SEPARATOR = "\r\n";
-	public final static String DEFAULT_LINE_SEPARATOR = WINDOWS_LINE_SEPARATOR;
+	public static final String WINDOWS_LINE_SEPARATOR = "\r\n";
+	public static final String DEFAULT_LINE_SEPARATOR = WINDOWS_LINE_SEPARATOR;
 	
 	private String lineSeparator;
 	
@@ -67,7 +67,7 @@ public class CustomPrintWriter extends PrintWriter {
 		this( out, autoFlush, DEFAULT_LINE_SEPARATOR );
 	}
 
-	protected void ensureOpen() throws IOException {
+	private void ensureOpenCustom() throws IOException {
 		if (out == null)
 			throw new IOException("Stream closed");
 	}
@@ -76,7 +76,7 @@ public class CustomPrintWriter extends PrintWriter {
 	public void println() {
 		try {
 			synchronized (lock) {
-				ensureOpen();
+				this.ensureOpenCustom();
 				out.write( DEFAULT_LINE_SEPARATOR );
 				if (autoFlush) {
 					out.flush();
@@ -89,4 +89,12 @@ public class CustomPrintWriter extends PrintWriter {
 		}
 	}
 
+	@Override
+	public void close() {
+		super.close();
+		this.out = null;
+	}
+
+	
+	
 }

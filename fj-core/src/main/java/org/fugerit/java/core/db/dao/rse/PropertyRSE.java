@@ -20,6 +20,7 @@
  */
 package org.fugerit.java.core.db.dao.rse;
 
+import java.io.Serializable;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -37,7 +38,14 @@ import org.fugerit.java.core.db.dao.RSExtractor;
  * @author Fugerit
  *
  */
-public abstract class PropertyRSE implements RSExtractor<Properties> {
+public abstract class PropertyRSE implements RSExtractor<Properties>, Serializable {
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -2284313730808746483L;
+
+	public static final PropertyRSE DEFAULT_REUSABLE = newReusableRSE();
 	
 	/**
 	 * Creates a new reusable PropertyRSE
@@ -46,6 +54,10 @@ public abstract class PropertyRSE implements RSExtractor<Properties> {
 	 */
 	public static PropertyRSE newReusableRSE() {
 		return new PropertyRSE() {
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = 3337897227412811466L;
 			@Override
 			public Properties extractNext(ResultSet rs) throws SQLException {
 				Properties props = new Properties();
@@ -74,15 +86,37 @@ public abstract class PropertyRSE implements RSExtractor<Properties> {
 		return new PropertyRSECached( configRS );
 	}
 
+	public static PropertyRSE newAutoCachingMetadataRSE() {
+		return new PropertyRSE() {
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = -1924594840530557931L;
+			private PropertyRSE wrapped = null;
+			@Override
+			public Properties extractNext(ResultSet rs) throws SQLException {
+				if ( this.wrapped == null ) {
+					this.wrapped = PropertyRSE.newNoReusableRSE( rs );
+				}
+				return this.wrapped.extractNext(rs);
+			}
+		};
+	}
+
 }
 
 class PropertyRSECached extends PropertyRSE {
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -5770000113315587928L;
 	
 	private List<String> columnNames;
 
 	public PropertyRSECached( ResultSet configRS ) throws SQLException {
 		super();
-		this.columnNames = new ArrayList<String>();
+		this.columnNames = new ArrayList<>();
 		ResultSetMetaData rsmd = configRS.getMetaData();
 		int cols = rsmd.getColumnCount();
 		for ( int k=1; k<=cols; k++) {
@@ -94,7 +128,7 @@ class PropertyRSECached extends PropertyRSE {
 	public Properties extractNext(ResultSet rs) throws SQLException {
 		Properties props = new Properties();
 		for ( int k=1; k<=this.columnNames.size(); k++) {
-			String name = this.columnNames.get( k );
+			String name = this.columnNames.get( k-1 );
 			String value = rs.getString( name );
 			if ( value != null ) {
 				props.setProperty( name, value );	
@@ -102,8 +136,5 @@ class PropertyRSECached extends PropertyRSE {
 		}
 		return props;
 	}
-	
-	
-	
 	
 }

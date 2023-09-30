@@ -6,8 +6,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.fugerit.java.core.cfg.ConfigException;
+import org.fugerit.java.core.util.MapEntry;
 import org.fugerit.java.core.util.PropertyEntry;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class ValidatorResult implements Serializable {
 
 	/**
@@ -17,13 +21,13 @@ public class ValidatorResult implements Serializable {
 
 	public static final String GENERIC_ID = ValidatorResult.class.getName()+"_GENERIC_ID";
 	
-	private List<PropertyEntry> errors;
+	private transient List<PropertyEntry> errors;
 	
-	private List<PropertyEntry> warnings;
+	private transient List<PropertyEntry> warnings;
 
 	public ValidatorResult() {
-		this.errors = new ArrayList<PropertyEntry>();
-		this.warnings = new ArrayList<PropertyEntry>();
+		this.errors = new ArrayList<>();
+		this.warnings = new ArrayList<>();
 	}
 
 	public void addGenericError( String message ) throws ConfigException {
@@ -31,6 +35,7 @@ public class ValidatorResult implements Serializable {
 	}
 	
 	public void addGenericWarning( String fieldId, String message ) throws ConfigException {
+		log.trace( "addGenericWarning {}, message : {}", fieldId, message );
 		this.addWarning( GENERIC_ID , message );
 	}
 	
@@ -53,9 +58,7 @@ public class ValidatorResult implements Serializable {
 	private List<String> filter( List<PropertyEntry> list, String fieldId ) {
 		return list.stream().filter( 
 				entry -> fieldId.equals( entry.getKey() ) 
-				).map( 
-				entry -> entry.getValue() 
-				).collect( Collectors.toList() );
+				).map( MapEntry::getValue ).collect( Collectors.toList() );
 	}
 	
 	public List<String> getFieldErrors(String fieldId ) {

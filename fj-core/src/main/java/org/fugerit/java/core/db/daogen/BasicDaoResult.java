@@ -2,10 +2,13 @@ package org.fugerit.java.core.db.daogen;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 
+import org.fugerit.java.core.db.dao.DAORuntimeException;
 import org.fugerit.java.core.util.result.BasicResult;
 
-public class BasicDaoResult<T> extends BasicResult implements DaoResultList<T> {
+public class BasicDaoResult<T> extends BasicResult implements DAOResultListExt<T> {
 
 	public static final int RESULT_NODATAFOUND = -3;
 	public static final int RESULT_NOT_SET = Integer.MIN_VALUE;
@@ -17,10 +20,18 @@ public class BasicDaoResult<T> extends BasicResult implements DaoResultList<T> {
 	
 	public BasicDaoResult(int resultCode) {
 		super(resultCode);
-		this.list = new ArrayList<T>();
+		this.list = new ArrayList<>();
 		this.resultDescription = new StringBuilder();
 	}
 
+	public static <T> Optional<T> oneFromResult( DAOResultListExt<T> result ) {
+		return Optional.ofNullable( result.getSingleResult() );
+	}
+	
+	public static <T> Optional<T> firstFromResult( DAOResultListExt<T> result ) {
+		return result.getList().isEmpty() ? Optional.empty() : Optional.of( result.getList().get( 0 ) );
+	}
+	
 	public BasicDaoResult() {
 		this( RESULT_NOT_SET );
 	}
@@ -32,6 +43,21 @@ public class BasicDaoResult<T> extends BasicResult implements DaoResultList<T> {
 		return list;
 	}
 
+	@Override
+	public Stream<T> stream() {
+		return this.getList().stream();
+	}
+	
+	@Override
+	public Optional<T> getOne() {
+		return oneFromResult( this );
+	}
+	
+	@Override
+	public Optional<T> getFirst() {
+		return firstFromResult( this );
+	}
+	
 	private StringBuilder resultDescription;
 	
 	@Override
@@ -72,7 +98,8 @@ public class BasicDaoResult<T> extends BasicResult implements DaoResultList<T> {
 	
 	@Override
 	public void setSingleResult( T value ) {
-		this.getList().set( 0 , value );
+		this.getList().clear();
+		this.getList().add( value );
 	}
 	
 	/**
@@ -88,7 +115,7 @@ public class BasicDaoResult<T> extends BasicResult implements DaoResultList<T> {
 		if ( this.getList().size() == 1 ) {
 			res = this.getList().get( 0 );
 		} else if ( this.getList().size() > 1 ) {
-			throw new RuntimeException( "Multiple results : "+this.getList().size() );
+			throw new DAORuntimeException( "Multiple results : "+this.getList().size() );
 		}
 		return res;
 	}

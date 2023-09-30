@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Properties;
 import java.util.ResourceBundle;
 
+import org.fugerit.java.core.cfg.ConfigRuntimeException;
 import org.fugerit.java.core.fixed.parser.FixedFieldDescriptor;
 import org.fugerit.java.core.fixed.parser.FixedFieldFileDescriptor;
-import org.fugerit.java.core.fixed.parser.FixedFieldFileReader;
 import org.fugerit.java.core.fixed.parser.FixedFileFieldBasicValidator;
 import org.fugerit.java.core.fixed.parser.FixedFileFieldMap;
 import org.fugerit.java.core.fixed.parser.FixedFileFieldValidationResult;
@@ -19,24 +19,24 @@ import org.slf4j.LoggerFactory;
 
 public abstract class  FixedFieldFileReaderAbstract {
 	
-	protected static Logger logger = LoggerFactory.getLogger( FixedFieldFileReader.class );
+	protected static Logger logger = LoggerFactory.getLogger( FixedFieldFileReaderAbstract.class );
 	
 	private String endline;
 	
-	public FixedFieldFileReaderAbstract( FixedFieldFileDescriptor descriptor ) throws IOException {
+	protected FixedFieldFileReaderAbstract( FixedFieldFileDescriptor descriptor ) throws IOException {
 		this.descriptor = descriptor;
 		this.bundle = FixedFileFieldBasicValidator.newBundle( this.getDescriptor().getBaseLocale() );
 		if ( descriptor.isCustomEndlineActive() ) {
-			String endline =  DEFAULT_MAPPER.getProperty( this.getDescriptor().getEndline() );
-			if ( endline == null ) {
+			String endlineLocal =  DEFAULT_MAPPER.getProperty( this.getDescriptor().getEndline() );
+			if ( endlineLocal == null ) {
 				throw new IOException( "Unsupported endline : "+this.getDescriptor().getEndline() );
 			} else {
-				this.endline = endline;
+				this.endline = endlineLocal;
 			}	
 		} else {
 			this.endline = null;
 		}
-		this.genericValidationErrors = new ArrayList<FixedFileFieldValidationResult>();
+		this.genericValidationErrors = new ArrayList<>();
 	}
 	
 	public static final Properties endlineMapper() {
@@ -77,7 +77,7 @@ public abstract class  FixedFieldFileReaderAbstract {
 		FixedFileFieldMap rawMap = null;
 		String currentLine = this.nextLine();
 		if ( currentLine == null ) {
-			throw new RuntimeException( "No line set" );
+			throw new ConfigRuntimeException( "No line set" );
 		} else {
 			rawMap = new FixedFileFieldMap( currentLine.length(), this.rowNumber );
 			Iterator<FixedFieldDescriptor> itFields = this.getDescriptor().getListFields().iterator();

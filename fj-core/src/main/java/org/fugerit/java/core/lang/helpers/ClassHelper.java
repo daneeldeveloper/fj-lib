@@ -1,29 +1,12 @@
-/*
- *
-		Fugerit Java Library is distributed under the terms of :
-
-                                 Apache License
-                           Version 2.0, January 2004
-                        http://www.apache.org/licenses/
-
-
-	Full license :
-		http://www.apache.org/licenses/LICENSE-2.0
-		
-	Project site: 
-		https://www.fugerit.org/
-	
-	SCM site :
-		https://github.com/fugerit79/fj-lib
-	
- *
- */
 package org.fugerit.java.core.lang.helpers;
 
 import java.io.InputStream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.fugerit.java.core.cfg.ConfigException;
+import org.fugerit.java.core.cfg.ConfigRuntimeException;
+import org.fugerit.java.core.util.ObjectUtils;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>This class provides API for instantiating new classes.</p>
@@ -31,9 +14,10 @@ import org.slf4j.LoggerFactory;
  * @author Fugerit
  *
  */
+@Slf4j
 public class ClassHelper {
 
-	private static final Logger logger = LoggerFactory.getLogger(ClassHelper.class);
+	private ClassHelper() {}
 	
 	/**
 	 * <p>Return default class loader to instantiate a new class.</p>
@@ -42,44 +26,63 @@ public class ClassHelper {
 	 * http://svn.apache.org/repos/asf/struts/struts1/trunk/org.fugerit.java.core/src/main/java/org/apache/struts/util/RequestUtils.java
 	 * </p>
 	 * 
+	 * <p>NOTE : As of 8.2.0 removed throw Exception declaration (now in case a {@link ConfigRuntimeException} will be thrown.</p>
+	 * 
 	 * @return				the Default ClassLoader.
-	 * @throws Exception	in case of troubles during the operation
+	 * 
 	 */
-	public static ClassLoader getDefaultClassLoader() throws Exception {
-		ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-		if ( classLoader == null ) {
-			classLoader = ClassHelper.class.getClassLoader();
-		}
-		return classLoader;
+	public static ClassLoader getDefaultClassLoader() {
+		return ObjectUtils.objectWithDefault( Thread.currentThread().getContextClassLoader() , ClassHelper.class.getClassLoader() );
 	}
 	
 	/**
 	 * <p>Create a new instance of the given type.</p>
 	 * 
+	 * <p>NOTE : As of 8.2.0 removed throw Exception declaration (now in case a {@link ConfigRuntimeException} will be thrown.</p>
+	 * 
 	 * @param type			fully qualified name fo the class for which the new instance will be created
 	 * @return				the new istance
-	 * @throws Exception	in case of troubles during the operation
+	 * @throws ClassNotFoundException if the class is not found 
+	 * @throws NoSuchMethodException  if the method (default constructor) is not found
+	 * @throws ConfigException   in any other case
 	 */
-	public static Object newInstance( String type ) throws Exception {
+	public static Object newInstance( String type ) throws ClassNotFoundException, NoSuchMethodException, ConfigException {
 		Object result = null;
-		ClassLoader classLoader = getDefaultClassLoader();
-		Class<?> c = classLoader.loadClass( type );
-		result = c.getDeclaredConstructor().newInstance();
+		try {
+			ClassLoader classLoader = getDefaultClassLoader();
+			Class<?> c = classLoader.loadClass( type );
+			result = c.getDeclaredConstructor().newInstance();	
+		} catch (ClassNotFoundException | NoSuchMethodException e) {
+			throw e;
+		} catch (Exception e) {
+			throw ConfigException.convertExMethod( "newInstance" , e );
+		}
 		return result;
 	}
 
-	public static InputStream loadFromClassLoader( Object caller, String path ) throws Exception {
+	public static InputStream loadFromClassLoader( String path, ClassLoader... cl ) {
 		InputStream is = null;
-		try {
-			is = getDefaultClassLoader().getResourceAsStream( path );
-		} catch (Exception e) {
-			logger.warn( "Failed to load from default class loader, trying caller loader ("+e+")" );
-			is = caller.getClass().getResourceAsStream( path );
+		if ( cl != null ) {
+			for ( int k=0; k<cl.length && is == null; k++ ) {
+				if ( cl[k] != null ) {
+					is = cl[k].getResourceAsStream( path );
+					if ( is == null ) {
+						log.trace( "Not found on class loader {}, path {}", k, path );
+					}
+				}
+			}
+		}
+		if ( is == null ) {
+			is = loadFromDefaultClassLoader(path);	
 		}
 		return is;
 	}
 	
-	public static InputStream loadFromDefaultClassLoader( String path ) throws Exception {
+	public static InputStream loadFromClassLoader( Object caller, String path ) {
+		return loadFromClassLoader( path, getDefaultClassLoader(), (caller != null) ? caller.getClass().getClassLoader() : null );
+	}
+	
+	public static InputStream loadFromDefaultClassLoader( String path ) {
 		return getDefaultClassLoader().getResourceAsStream( path ); 
 	}
 	

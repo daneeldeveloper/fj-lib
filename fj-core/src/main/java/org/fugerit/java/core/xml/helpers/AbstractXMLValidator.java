@@ -23,12 +23,6 @@ public abstract class AbstractXMLValidator implements XMLValidator {
     }
 
     /* (non-Javadoc)
-     * @see org.opinf.jlib.std.xml.XMLValidator#validateXML(org.xml.sax.InputSource, org.fugerit.java.core.xml.sax.SAXParseResult)
-     */
-    @Override
-    public abstract boolean validateXML(InputSource source, SAXParseResult result) throws XMLException;
-
-    /* (non-Javadoc)
      * @see org.opinf.jlib.std.xml.XMLValidator#validateXML(org.xml.sax.InputSource)
      */
     @Override
@@ -104,7 +98,7 @@ public abstract class AbstractXMLValidator implements XMLValidator {
      * @see org.opinf.jlib.std.xml.XMLValidator#validateXML(java.lang.StringBuffer, org.fugerit.java.core.xml.sax.SAXParseResult)
      */
     @Override
-    public boolean validateXML(StringBuffer source, SAXParseResult result) throws XMLException {
+    public boolean validateXML(CharSequence source, SAXParseResult result) throws XMLException {
         return this.validateXML(source.toString(), result);
     }
 
@@ -112,7 +106,7 @@ public abstract class AbstractXMLValidator implements XMLValidator {
      * @see org.opinf.jlib.std.xml.XMLValidator#validateXML(java.lang.StringBuffer)
      */
     @Override
-    public SAXParseResult validateXML(StringBuffer source) throws XMLException {
+    public SAXParseResult validateXML(CharSequence source) throws XMLException {
         SAXParseResult result = new SAXParseResult();
         this.validateXML(source, result);
         return result;
@@ -122,7 +116,7 @@ public abstract class AbstractXMLValidator implements XMLValidator {
      * @see org.opinf.jlib.std.xml.XMLValidator#isValidaXML(java.lang.StringBuffer)
      */
     @Override
-    public boolean isValidaXML(StringBuffer source) throws XMLException {
+    public boolean isValidaXML(CharSequence source) throws XMLException {
         return this.isValid(this.validateXML(source));
     }
 
@@ -140,9 +134,7 @@ public abstract class AbstractXMLValidator implements XMLValidator {
      */
     @Override
     public SAXParseResult validateXML(String source) throws XMLException {
-        SAXParseResult result = new SAXParseResult();
-        this.validateXML(source, result);
-        return result;
+        return this.validateXML( (CharSequence) source );
     }
 
     /* (non-Javadoc)
@@ -150,7 +142,7 @@ public abstract class AbstractXMLValidator implements XMLValidator {
      */
     @Override
     public boolean isValidaXML(String source) throws XMLException {
-        return this.isValid(this.validateXML(source));
+        return this.isValidaXML( (CharSequence) source );
     }
 
     /* (non-Javadoc)

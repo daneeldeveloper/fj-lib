@@ -26,7 +26,7 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.fugerit.java.core.log.LogFacade;
+import org.fugerit.java.core.cfg.CloseHelper;
 
 /**
  * Helper class for handling ConnectionFactory
@@ -36,7 +36,9 @@ import org.fugerit.java.core.log.LogFacade;
  */
 public class ConnectionFacade {
 
-	private static Map<String, ConnectionFactory> cfMap = new HashMap<String, ConnectionFactory>();
+	private ConnectionFacade() {}
+	
+	private static Map<String, ConnectionFactory> cfMap = new HashMap<>();
 	
 	/**
 	 * Static connection factory registration.
@@ -59,7 +61,7 @@ public class ConnectionFacade {
 	 * @return		the factory
 	 */
 	public static ConnectionFactory getFactory( String name ) {
-		return (ConnectionFactory)cfMap.get( name );
+		return cfMap.get( name );
 	}
 
 	/**
@@ -71,7 +73,10 @@ public class ConnectionFacade {
 	 * @return		true if everything was closed with no errors
 	 */
 	public static boolean closeLoose( Connection conn, Statement stm, ResultSet rs ) {
-		return closeLoose( conn ) && closeLoose( stm ) && closeLoose( rs );
+		boolean close1 = closeLoose(conn);
+		boolean close2 = closeLoose(stm);
+		boolean close3 = closeLoose(rs);
+		return close1 && close2 && close3;
 	}	
 
 	/**
@@ -82,7 +87,9 @@ public class ConnectionFacade {
 	 * @return		true if everything was closed with no errors
 	 */
 	public static boolean closeLoose( Connection conn, Statement stm ) {
-		return closeLoose( conn ) && closeLoose( stm );
+		boolean close1 = closeLoose(conn);
+		boolean close2 = closeLoose(stm);
+		return close1 && close2;
 	}
 	
 	/**
@@ -92,18 +99,7 @@ public class ConnectionFacade {
 	 * @return		true if everything was closed with no errors
 	 */
 	public static boolean closeLoose( ResultSet rs ) {
-		boolean close = true;
-		if ( rs != null ) {
-			try {
-				rs.close();
-			} catch (Exception e) {
-				LogFacade.getLog().warn( "ConnectionFacade.closeLoose(java.sql.Connection) : failed to close connetion : "+rs );
-				close = false;
-			}
-		} else {
-			close = false;
-		}
-		return close;
+		return CloseHelper.closeSilent( rs );
 	}		
 	
 	/**
@@ -113,18 +109,7 @@ public class ConnectionFacade {
 	 * @return		true if everything was closed with no errors
 	 */
 	public static boolean closeLoose( Statement stm ) {
-		boolean close = true;
-		if ( stm != null ) {
-			try {
-				stm.close();
-			} catch (Exception e) {
-				LogFacade.getLog().warn( "ConnectionFacade.closeLoose(java.sql.Connection) : failed to close connetion : "+stm );
-				close = false;
-			}
-		} else {
-			close = false;
-		}
-		return close;
+		return CloseHelper.closeSilent( stm );
 	}	
 	
 	/**
@@ -134,18 +119,7 @@ public class ConnectionFacade {
 	 * @return		true if everything was closed with no errors
 	 */
 	public static boolean closeLoose( Connection conn ) {
-		boolean close = true;
-		if ( conn != null ) {
-			try {
-				conn.close();
-			} catch (Exception e) {
-				LogFacade.getLog().warn( "ConnectionFacade.closeLoose(java.sql.Connection) : failed to close connetion : "+conn );
-				close = false;
-			}
-		} else {
-			close = false;
-		}
-		return close;
+		return CloseHelper.closeSilent( conn );
 	}
 	
 }

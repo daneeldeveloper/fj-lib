@@ -91,39 +91,34 @@ public class ValidatorNumber extends BasicValidator {
 		}
 		return res;
 	}
-	
-	@Override
-	public void checkConfig() throws ConfigException {
-		super.checkConfig();
-	}
 
 	@Override
 	public void configure( Properties atts ) throws ConfigException {
 		super.configure(atts);
 		try {
-			String maxIntegerDigits = atts.getProperty( KEY_MAXIMUM_INTEGER_DIGITS , String.valueOf( NO_LENGTH_CONSTRAINT ) ); 
-			if ( StringUtils.isNotEmpty( maxIntegerDigits ) ) {
-				this.maximumIntegerDigits = Integer.parseInt( maxIntegerDigits );
+			String maxIntegerDigitsLocal = atts.getProperty( KEY_MAXIMUM_INTEGER_DIGITS , String.valueOf( NO_LENGTH_CONSTRAINT ) ); 
+			if ( StringUtils.isNotEmpty( maxIntegerDigitsLocal ) ) {
+				this.maximumIntegerDigits = Integer.parseInt( maxIntegerDigitsLocal );
 			}
-			String maxFractionDigits = atts.getProperty( KEY_MINIMUM_FRACTION_DIGITS , String.valueOf( NO_LENGTH_CONSTRAINT ) ); 
-			if ( StringUtils.isNotEmpty( maxFractionDigits ) ) {
-				this.maximumFractionDigits = Integer.parseInt( maxFractionDigits );
+			String maxFractionDigitsLocal = atts.getProperty( KEY_MINIMUM_FRACTION_DIGITS , String.valueOf( NO_LENGTH_CONSTRAINT ) ); 
+			if ( StringUtils.isNotEmpty( maxFractionDigitsLocal ) ) {
+				this.maximumFractionDigits = Integer.parseInt( maxFractionDigitsLocal );
 			}
-			String groupingUsed = atts.getProperty( KEY_GROUPING_USED ); 
-			if ( StringUtils.isNotEmpty( groupingUsed ) ) {
-				this.groupingUsed = BooleanUtils.isTrue( groupingUsed );
+			String groupingUsedLocal = atts.getProperty( KEY_GROUPING_USED ); 
+			if ( StringUtils.isNotEmpty( groupingUsedLocal ) ) {
+				this.groupingUsed = BooleanUtils.isTrue( groupingUsedLocal );
 			}
-			String currency = atts.getProperty( KEY_CURRENCY ); 
-			if ( StringUtils.isNotEmpty( currency ) ) {
-				this.currency = BooleanUtils.isTrue( currency );
+			String currencyLocal = atts.getProperty( KEY_CURRENCY ); 
+			if ( StringUtils.isNotEmpty( currencyLocal ) ) {
+				this.currency = BooleanUtils.isTrue( currencyLocal );
 			}
-			String minValue = atts.getProperty( KEY_MINVALUE );
-			if ( StringUtils.isNotEmpty( minValue ) ) {
-				this.minValue = minValue;
+			String minValueLocal = atts.getProperty( KEY_MINVALUE );
+			if ( StringUtils.isNotEmpty( minValueLocal ) ) {
+				this.minValue = minValueLocal;
 			}
-			String maxValue = atts.getProperty( KEY_MAXVALUE );
-			if ( StringUtils.isNotEmpty( maxValue ) ) {
-				this.maxValue = maxValue;
+			String maxValueLocal = atts.getProperty( KEY_MAXVALUE );
+			if ( StringUtils.isNotEmpty( maxValueLocal ) ) {
+				this.maxValue = maxValueLocal;
 			}
 		} catch (Exception e) {
 			throw new ConfigException( e );
@@ -132,9 +127,9 @@ public class ValidatorNumber extends BasicValidator {
 
 	@Override
 	public boolean validate(ValidatorContext context) throws Exception {
-		String minValue = this.checkOverride( context, this.getMinValue(), KEY_MINVALUE );
-		String maxValue = this.checkOverride( context, this.getMaxValue(), KEY_MAXVALUE );
-		return super.validate( context ) && this.validate( context, minValue, maxValue );
+		String minValueLocal = this.checkOverride( context, this.getMinValue(), KEY_MINVALUE );
+		String maxValueLocal = this.checkOverride( context, this.getMaxValue(), KEY_MAXVALUE );
+		return super.validate( context ) && this.validate( context, minValueLocal, maxValueLocal );
 	}
 	
 	protected NumberFormat newFormat( ValidatorContext context ) {
@@ -153,7 +148,7 @@ public class ValidatorNumber extends BasicValidator {
 		return nf;
 	}
 	
-	protected boolean validate( ValidatorContext context, String minValue, String maxValue ) throws Exception {
+	protected boolean validate( ValidatorContext context, String minValue, String maxValue ) throws ConfigException {
 		boolean valid = true;
 		NumberFormat nf = this.newFormat(context);
 		try {

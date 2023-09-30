@@ -3,13 +3,14 @@ package test.org.fugerit.java.core.util.filterchain;
 import static org.junit.Assert.fail;
 
 import org.fugerit.java.core.util.filterchain.MiniFilterConfig;
+import org.fugerit.java.core.util.filterchain.MiniFilterMap;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TestDuplicateFailOnSet {
 
-	private final static Logger logger = LoggerFactory.getLogger( TestDuplicateFailOnSet.class );
+	private static final Logger logger = LoggerFactory.getLogger( TestDuplicateFailOnSet.class );
 	
 	private static final String CONF_PATH_DUPLICATE_FAIL_ON_SET = "core/util/filterchain/minifilter-test-duplicate-fail-on-set.xml";
 	
@@ -20,7 +21,7 @@ public class TestDuplicateFailOnSet {
 		logger.info(  "*          TEST DUPLICATE                    *" );
 		boolean ok = false;
 		try {
-			MiniFilterConfig config = MiniFilterConfig.initFromClassLoaderWithRuntimeException( CONF_PATH_DUPLICATE_FAIL_ON_SET );
+			MiniFilterMap config = MiniFilterConfig.initFromClassLoaderWithRuntimeException( CONF_PATH_DUPLICATE_FAIL_ON_SET );
 			logger.info( config.toString() );
 		} catch (Exception e) {
 			logger.info( e.getMessage() );

@@ -25,6 +25,8 @@ import java.io.FileInputStream;
 import java.util.Enumeration;
 import java.util.Properties;
 
+import org.fugerit.java.core.function.SafeFunction;
+
 /**
  * <p>Simple arg parsing utility.</p>
  * 
@@ -33,6 +35,8 @@ import java.util.Properties;
  */
 public class ArgUtils {
 
+	private ArgUtils() {}
+	
 	/**
 	 * Prefix for all arguments
 	 */
@@ -83,30 +87,40 @@ public class ArgUtils {
 	public static Properties getArgs( String[] args, boolean checkParamFile, boolean priorityToParamFile ) {
 		Properties props = new Properties();
 		if ( args != null ) {
-			String currentkey = null;
-			boolean keySet = true;
-			for ( int k=0; k<args.length; k++ ) {
-				String current = args[k];
-				if ( current.startsWith( ARG_PREFIX ) ) {
-					if ( !keySet ) {
-						props.setProperty( currentkey , ARG_DEFAULT_VALUE );
-					}
-					currentkey = current.substring( ARG_PREFIX.length() );
-					keySet = false;
-				} else {
-					if ( currentkey != null ) {
-						props.setProperty( currentkey , current );
-						keySet = true;	
-					}
-				}
-			}
+			handleParams(args, props);
 		}
 		if ( checkParamFile ) {
-			String paramFile = props.getProperty( ARG_PARAM_FILE );
-			if ( paramFile != null ) {
-				File f = new File( paramFile );
-				try {
-					FileInputStream fis = new FileInputStream( f );
+			checkParamFile(priorityToParamFile, props);
+		}
+		return props;
+	}
+	
+	private static void handleParams( String[] args, Properties props) {
+		String currentkey = null;
+		boolean keySet = true;
+		for ( int k=0; k<args.length; k++ ) {
+			String current = args[k];
+			if ( current.startsWith( ARG_PREFIX ) ) {
+				currentkey = current.substring( ARG_PREFIX.length() );
+				keySet = false;
+			} else {
+				if ( currentkey != null ) {
+					props.setProperty( currentkey , current );
+					keySet = true;	
+				}
+			}
+			if ( !keySet ) {
+				props.setProperty( currentkey , ARG_DEFAULT_VALUE );
+			}
+		}
+	}
+	
+	private static void checkParamFile( boolean priorityToParamFile, Properties props ) {
+		String paramFile = props.getProperty( ARG_PARAM_FILE );
+		if ( paramFile != null ) {
+			File f = new File( paramFile );
+			SafeFunction.apply(() -> {
+				try (FileInputStream fis = new FileInputStream( f )) {
 					if ( priorityToParamFile ) {
 						props.load( fis );	
 					} else {
@@ -120,13 +134,9 @@ public class ArgUtils {
 							}
 						}
 					}
-					fis.close();	
-				} catch (Exception e) {
-					throw new RuntimeException( e );
 				}
-			}	
+			});
 		}
-		return props;
 	}
 	
 	/**

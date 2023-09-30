@@ -1,7 +1,6 @@
 package org.fugerit.java.core.db.dao.idgen;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.Properties;
 
 import org.fugerit.java.core.db.connect.ConnectionFactory;
@@ -14,7 +13,9 @@ import org.fugerit.java.core.util.PropsIO;
 
 public class IdGeneratorFacade {
 
-	private final static Properties SEQ_TYPES = PropsIO.loadFromClassLoaderSafe( "core/dao/idgen/seq_generator.properties" );
+	private IdGeneratorFacade() {}
+	
+	private static final Properties SEQ_TYPES = PropsIO.loadFromClassLoaderSafe( "core/dao/idgen/seq_generator.properties" );
 	
 	public static BasicSeqIdGenerator sequenceGenerator( DAOContext context, String sequenceName ) throws DAOException {
 		return sequenceGenerator( context.getConnection(), sequenceName );
@@ -26,29 +27,20 @@ public class IdGeneratorFacade {
 	}
 	
 	public static BasicSeqIdGenerator sequenceGenerator( ConnectionFactory cf, String sequenceName ) throws DAOException {
-		int dbType = DbUtils.DB_UNKNOWN;;
-		try {
-			dbType = DbUtils.indentifyDB( cf.getConnection() );
-		} catch (SQLException e) {
-			throw new DAOException( e );
-		}
-		return sequenceGenerator( cf, sequenceName, dbType );
+		return DAOException.get( () -> sequenceGenerator( cf, sequenceName, DbUtils.indentifyDB( cf.getConnection() ) ) );
 	}
 	
 	public static BasicSeqIdGenerator sequenceGenerator( ConnectionFactory cf, String sequenceName, int dbType ) throws DAOException {
-		BasicSeqIdGenerator gen = null;
-		try {
-			
+		return DAOException.get( () -> {
+			BasicSeqIdGenerator gen = null;
 			String type = SEQ_TYPES.getProperty( String.valueOf( dbType ) );
 			if ( type != null ) {
 				gen = (BasicSeqIdGenerator)ClassHelper.newInstance( type );
 				gen.setSequenceName( sequenceName );
 				gen.setConnectionFactory( cf );
 			}
-		} catch (Exception e) {
-			throw new DAOException( e );
-		}
-		return gen;
+			return gen;
+		} );
 	}
 	
 }

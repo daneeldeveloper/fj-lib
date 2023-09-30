@@ -28,24 +28,32 @@ import java.text.MessageFormat;
 import java.util.List;
 
 import org.fugerit.java.core.log.LogObject;
+import org.fugerit.java.core.util.checkpoint.CheckpointUtils;
 import org.slf4j.Logger;
 
 public class DAOHelper {
-
-    public static void setAll( PreparedStatement ps, FieldList fields, Logger logger ) throws SQLException {
-    	logger.debug( "Total Param Number : "+fields.size() );
+	
+	private DAOHelper() {}
+	
+	public static void setAll( String queryId, PreparedStatement ps, FieldList fields, Logger log ) throws SQLException {
+		log.debug( "queryId:'{}', setAll() Total Param Number : '{}'", queryId, fields.size() );
     	int np = 0;
     	int k = 0;
 		while ( k<fields.size() ) {
 			np++;
 			int param = (k+1);
 			Field f = fields.getField(k);
-			logger.debug( "Setting param n. "+param+", value: "+String.valueOf( f )+"(fl.size:"+fields.size()+")" );
+			long startTime = System.currentTimeMillis();
+			String message = "n. "+param+", value: "+f+" (set time : '"+CheckpointUtils.formatTimeDiffMillis( startTime, System.currentTimeMillis() )+"')";
+			log.debug( "queryId:'{}', setAll() Setting param (ng1) : '{}'", queryId, message );
 			f.setField(ps, param);
 			k++;
-			logger.debug( "test : "+(k<fields.size())+" k:"+k+" fields.size:"+fields.size() );
-		}    		
-		logger.debug( "Total param set : "+np );
+		}    	
+		log.debug( "queryId:'{}', setAll() Total param set : '{}'", queryId, np );
+    }
+
+    public static void setAll( PreparedStatement ps, FieldList fields, Logger logger ) throws SQLException {
+    	setAll( "NO-QUERY-ID" , ps, fields, logger);
     }
 	
     public static void setAll( PreparedStatement ps, FieldList fields, LogObject log ) throws SQLException {
@@ -53,26 +61,22 @@ public class DAOHelper {
     }
 
 	public static String queryFormat( String sql, String method, LogObject log, DAOFactory bdf ) {
-		log.getLogger().debug( "input  query : "+sql );
+		log.getLogger().debug( "input  query : {}, method : {}", sql, method );
 		MessageFormat f = new MessageFormat( sql );
 		sql = f.format( bdf.getSqlArgs() );
-		log.getLogger().debug( "output query : "+sql );
+		log.getLogger().debug( "output query : {}", sql );
 		return sql;
 	}
 	
     public static void close(Connection conn) throws DAOException {
-        try {
-            conn.close();
-        } catch (SQLException e) {
-            throw (new DAOException(e));
-        }
+    	DAOException.apply( conn::close );
     }
     
 	public static <T> void loadAll(List<T> l, String query, FieldList fields, RSExtractor<T> re,  DAOFactory bdf, LogObject log ) throws DAOException {
-		log.getLogger().debug("loadAll START list : '"+l.size()+"'");
+		log.getLogger().debug("loadAll START list : {}", l.size());
 		query = DAOHelper.queryFormat( query, "loadAll", log, bdf );
-		log.getLogger().debug("loadAll fields        : '"+fields.size()+"'");
-		log.getLogger().debug("loadAll RSExtractor   : '"+re+"'");
+		log.getLogger().debug("loadAll fields        : '{}'", fields.size() );
+		log.getLogger().debug("loadAll RSExtractor   : {}'", re );
 		Connection conn = bdf.getConnection();
 		int i=0;
 		try {
@@ -90,14 +94,14 @@ public class DAOHelper {
 		} finally {
 			DAOHelper.close( conn );
 		}
-		log.getLogger().debug("loadAll END list : '"+l.size()+"'");
+		log.getLogger().debug("loadAll END list : '{}'", l.size() );
 	}
     
     public static <T> T loadOne(String query, FieldList fields, RSExtractor<T> re, DAOFactory bdf, LogObject log ) throws DAOException {
 	    log.getLogger().debug("loadOne START ");
 		query = DAOHelper.queryFormat( query, "loadOne", log, bdf );
-        log.getLogger().debug("loadOne fields        : '"+fields.size()+"'");
-        log.getLogger().debug("loadOne RSExtractor   : '"+re+"'");    	
+        log.getLogger().debug("loadOne fields        : '{}'", fields.size() );
+        log.getLogger().debug("loadOne RSExtractor   : '{}'", re );    	
         T result = null;
         Connection conn = bdf.getConnection();
         try {
@@ -114,7 +118,7 @@ public class DAOHelper {
         } finally {
             DAOHelper.close( conn );
         }
-        log.getLogger().debug("loadOne END : "+result );
+        log.getLogger().debug("loadOne END : {}", result );
         return result;
     }
 	

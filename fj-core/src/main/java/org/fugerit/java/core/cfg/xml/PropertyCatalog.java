@@ -1,9 +1,12 @@
 package org.fugerit.java.core.cfg.xml;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
 import org.fugerit.java.core.cfg.ConfigException;
+import org.fugerit.java.core.cfg.ConfigRuntimeException;
+import org.fugerit.java.core.io.helper.StreamHelper;
 import org.fugerit.java.core.lang.helpers.ClassHelper;
 import org.fugerit.java.core.lang.helpers.StringUtils;
 import org.fugerit.java.core.util.collection.ListMapStringKey;
@@ -28,7 +31,33 @@ public class PropertyCatalog extends ListMapCatalogConfig<PropertyHolder> {
 	 * 
 	 */
 	private static final long serialVersionUID = -8955747963894569155L;
+	
+	// code added to setup a basic conditional serialization - START
+	
+	private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		out.defaultWriteObject();
+	}
 
+	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		in.defaultReadObject();
+	}
+	
+	// code added to setup a basic conditional serialization - END
+
+	public static PropertyCatalog loadConfigSafe( String path ) {
+		PropertyCatalog result = new PropertyCatalog();
+		try ( InputStream is = StreamHelper.resolveStream( path ) ) {
+			load( is , result );
+		} catch (Exception e) {
+			throw ConfigRuntimeException.convertExMethod( "loadConfigSafe" , e );
+		}
+		return result;
+	}
+	
 	@Override
 	protected PropertyHolder customEntryHandling(String dataListId, PropertyHolder current, Element element) throws ConfigException {
 		PropertyHolder holder = super.customEntryHandling(dataListId, current, element);
@@ -39,9 +68,9 @@ public class PropertyCatalog extends ListMapCatalogConfig<PropertyHolder> {
 				holder.setPath( PARAM_FINDER.substitute( holder.getPath() , this.getMapSysEnv() ) );	
 			}
 			holder.init( this, dataListId );
-			logger.warn( "PropertyCatalog - load ok for holder {} > {}", dataListId, holder.getId() );
+			this.getLogger().warn( "PropertyCatalog - load ok for holder {} > {}", dataListId, holder.getId() );
 		} catch (IOException e) {
-			logger.warn( "PropertyCatalog - Failed init for holder {} > {}", dataListId, holder.getId(), e );
+			this.getLogger().warn( "PropertyCatalog - Failed init for holder {} > {}", dataListId, holder.getId(), e );
 		}
 		return holder;
 	}
@@ -56,7 +85,7 @@ public class PropertyCatalog extends ListMapCatalogConfig<PropertyHolder> {
 		
 	}
 	
-	private static ParamFinder PARAM_FINDER = ParamFinder.newFinder();
+	private static final ParamFinder PARAM_FINDER = ParamFinder.newFinder();
 	
 	private ParamProvider pathParamProvider;
 	
@@ -64,7 +93,7 @@ public class PropertyCatalog extends ListMapCatalogConfig<PropertyHolder> {
 		if ( this.pathParamProvider == null ) {
 			String pathParamProviderType = this.getGeneralProps().getProperty( PROP_PATH_PARAM_PROVIDER );
 			if ( pathParamProviderType != null ) {
-				logger.info( PROP_PATH_PARAM_PROVIDER+" -> "+pathParamProviderType );
+				this.getLogger().info( "{} -> {}", PROP_PATH_PARAM_PROVIDER, pathParamProviderType );
 				try {
 					this.pathParamProvider = (ParamProvider) ClassHelper.newInstance( pathParamProviderType );
 				} catch (Exception e) {
@@ -87,7 +116,7 @@ public class PropertyCatalog extends ListMapCatalogConfig<PropertyHolder> {
 				for ( int k=0; k<split.length; k++ ) {
 					String key = split[k];
 					String value = System.getProperty( key );
-					logger.info( "map system env {} -> {}", key, value );
+					this.getLogger().info( "map system env {} -> {}", key, value );
 					if ( value != null ) {
 						this.mapSysEnv.setProperty( key , value );
 					}

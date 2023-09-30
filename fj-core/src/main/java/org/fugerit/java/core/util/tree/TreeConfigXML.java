@@ -30,9 +30,9 @@ public class TreeConfigXML<T extends Node<T, L>, L extends Collection<T>> extend
 	
 	private Properties generalProps;
 	
-	private T tree;
+	private transient T tree;
 	
-	protected Collection<TreeDecorator<T>> decorators;
+	protected transient Collection<TreeDecorator<T>> decorators;
 	
 	public T getTree() {
 		return tree;
@@ -47,7 +47,7 @@ public class TreeConfigXML<T extends Node<T, L>, L extends Collection<T>> extend
 	@SuppressWarnings("unchecked")
 	protected void addKids( NodeList childs, T parent ) throws Exception {
 		for ( int k=0; k<childs.getLength(); k++ ) {
-			if ( childs.item( k ).getNodeType() == Element.ELEMENT_NODE ) {
+			if ( childs.item( k ).getNodeType() == org.w3c.dom.Node.ELEMENT_NODE ) {
 				Element current = (Element)childs.item( k );
 				if ( TAG_NODE.equals( current.getTagName() ) ) {
 					if ( parent.accessChildren() == null ) {
@@ -72,8 +72,26 @@ public class TreeConfigXML<T extends Node<T, L>, L extends Collection<T>> extend
 	
 	protected T setupData( Element tag ) throws Exception {
 		String type = this.getGeneralProps().getProperty( ATT_TYPE );
-		T obj = XmlBeanHelper.setFromElement( type , tag );
-		return obj;
+		return XmlBeanHelper.setFromElement( type , tag );
+	}
+	
+	private T configureCurrent( T root, Element current ) throws ConfigException {
+		if ( TAG_NODE.equals( current.getTagName() ) ) {
+			if ( root == null ) {
+				NodeList currentKids = current.getChildNodes();
+				try {
+					root = this.setupData( current );
+					this.setupData( root, null, current );
+					this.addKids( currentKids, root );
+					this.tree = root;
+				} catch (Exception e) {
+					throw ConfigException.convertEx( e );
+				}
+			} else {
+				throw new ConfigException( "Multiple root noode not allowed" );
+			}
+		}
+		return root;
 	}
 	
 	@Override
@@ -85,24 +103,9 @@ public class TreeConfigXML<T extends Node<T, L>, L extends Collection<T>> extend
 		NodeList childs = tag.getChildNodes();
 		T root = null;
 		for ( int k=0; k<childs.getLength(); k++ ) {
-			if ( childs.item( k ).getNodeType() == Element.ELEMENT_NODE ) {
+			if ( childs.item( k ).getNodeType() == org.w3c.dom.Node.ELEMENT_NODE ) {
 				Element current = (Element)childs.item( k );
-				if ( TAG_NODE.equals( current.getTagName() ) ) {
-					if ( root == null ) {
-						NodeList currentKids = current.getChildNodes();
-						try {
-							root = this.setupData( current );
-							this.setupData( root, null, current );
-							this.addKids( currentKids, root );
-							this.tree = root;
-						} catch (Exception e) {
-							throw new ConfigException( e );
-						}
-						
-					} else {
-						throw new ConfigException( "Multiple root noode not allowed" );
-					}
-				}
+				root = this.configureCurrent(root, current);
 			}
 		}
 	}

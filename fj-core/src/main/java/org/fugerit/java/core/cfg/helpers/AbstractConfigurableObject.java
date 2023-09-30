@@ -20,18 +20,22 @@
  */
 package org.fugerit.java.core.cfg.helpers;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
-import java.util.Properties;
 
 import org.fugerit.java.core.cfg.ConfigException;
 import org.fugerit.java.core.cfg.ConfigurableObject;
-import org.fugerit.java.core.log.BasicLogObject;
+import org.fugerit.java.core.cfg.provider.ConfigProvider;
+import org.fugerit.java.core.log.LogObject;
 import org.fugerit.java.core.util.PropsIO;
 import org.fugerit.java.core.xml.dom.DOMIO;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.w3c.dom.Element;
+
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * <p>Abstract implementation of ConfigurableObject interface.
@@ -40,27 +44,32 @@ import org.w3c.dom.Element;
  * @author Fugerit
  *
  */
-public abstract class AbstractConfigurableObject extends BasicLogObject implements ConfigurableObject, Serializable {
+@Slf4j
+public abstract class AbstractConfigurableObject implements ConfigurableObject, LogObject, Serializable {
 
-	protected static final Logger logger = LoggerFactory.getLogger(ConfigurableObject.class);
-	
 	/*
 	 * 
 	 */
 	private static final long serialVersionUID = -5893401779153563982L;
 
-	/* (non-Javadoc)
-	 * @see org.fugerit.java.core.cfg.ConfigurableObject#configure(java.util.Properties)
-	 */
-	@Override
-	public abstract void configure(Properties props) throws ConfigException;
+	// code added to setup a basic conditional serialization - START
+	
+	private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		out.defaultWriteObject();
+	}
 
-	/* (non-Javadoc)
-	 * @see org.fugerit.java.core.cfg.ConfigurableObject#configure(org.w3c.dom.Element)
-	 */
-	@Override	
-	public abstract void configure(Element tag) throws ConfigException;
-
+	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+		// this class is conditionally serializable, depending on contained object
+		// special situation can be handleded using this method in future
+		in.defaultReadObject();
+	}
+	
+	// code added to setup a basic conditional serialization - END
+	
+	protected static Logger logger = log; 	// for backward compatibility
+	
 	/* (non-Javadoc)
 	 * @see org.fugerit.java.core.cfg.ConfigurableObject#configureProperties(java.io.InputStream)
 	 */
@@ -85,4 +94,17 @@ public abstract class AbstractConfigurableObject extends BasicLogObject implemen
 		}
 	}
 
+	@Setter(AccessLevel.PROTECTED)
+	@Getter(AccessLevel.PROTECTED)
+	private ConfigProvider configProvider;
+	
+	public static void setConfigProvider( ConfigProvider provider, AbstractConfigurableObject config ) {
+		 config.setConfigProvider(provider) ;
+	}
+
+	@Override
+	public Logger getLogger() {
+		return log;
+	}
+	
 }

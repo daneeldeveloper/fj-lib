@@ -19,19 +19,19 @@ public class ParamFinder extends BasicLogObject {
 	public static final String ALT1_PRE = "\\{";
 	public static final String ALT1_POST = "\\}";
 
-	/*
+	/**
 	 * Creates a ParamFinder with default substitution ${param}
 	 * 
-	 * @return
+	 * @return the new ParamFinder
 	 */
 	public static ParamFinder newFinder() {
 		return new ParamFinder( DEFAULT_PRE, DEFAULT_POST, 2, 1 );
 	}
 	
-	/*
+	/**
 	 * Creates a ParamFinder with alternative substitution {param}
 	 * 
-	 * @return
+	 * @return  the new ParamFinder
 	 */
 	public static ParamFinder newFinderAlt1() {
 		return new ParamFinder( ALT1_PRE, ALT1_POST, 1, 1 );
@@ -58,20 +58,21 @@ public class ParamFinder extends BasicLogObject {
 	
 	public Set<String> getParamSet( CharSequence text ) {
 		List<String> paramList = this.getParamList( text );
-		Set<String> paramSet = new HashSet<String>( paramList );
-		return paramSet;
+		return new HashSet<>( paramList );
 	}
 	
 	public List<String> getParamList( CharSequence text ) {
-		List<String> paramList = new ArrayList<String>();
+		List<String> paramList = new ArrayList<>();
 		Matcher m = p.matcher( text );
 		while ( m.find() ) {
 			String found = m.group();
-			this.getLogger().debug( "FOUND : "+found+" : "+this.pre.length()+" : "+this.post.length() );
+			if ( this.getLogger().isDebugEnabled() ) {
+				String message = "FOUND : "+found+" : "+this.pre.length()+" : "+this.post.length();
+				this.getLogger().debug( message );	
+			}
 			String paramName = found.substring( this.preL, found.length()-this.postL );
 			paramList.add( paramName );
 		}
-		//this.getLog().debug( "PARAM_LIST "+paramList );
 		return paramList;
 	}
 
@@ -94,7 +95,7 @@ public class ParamFinder extends BasicLogObject {
 		List<String> list = this.getParamList( result );
 		Iterator<String> it = list.iterator();
 		while ( it.hasNext() ) {
-			String current = it.next().toString();
+			String current = it.next();
 			String sub = params.getProperty( current );
 			if ( sub != null ) {
 				result = result.replaceAll( this.pre+current+this.post , sub );	

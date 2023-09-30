@@ -24,23 +24,32 @@ import java.util.Properties;
 
 import org.fugerit.java.core.lang.helpers.ClassHelper;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * <p>Helper class for wrapping a module version meta information.</p>
  * 
  * @author Fugerit
  *
  */
+@Slf4j
 public class VersionUtils {
+	
+	private VersionUtils() {}
 
-	public static Properties MODULES = new Properties();
+	private static final Properties MODULES = new Properties();
 
+	public static final String CODE_01_NOT_FOUND = "[01] Module does not exist";
+	
+	public static final String CODE_03_NO_CONVERT = "[03] Impossible to convert module version";
+	
 	/**
 	 * Register a module
 	 * 
 	 * @param name			the name of the module to register
 	 * @param className		the implementing class for the module
 	 */
-	public synchronized static void registerModule( String name, String className ) {
+	public static synchronized void registerModule( String name, String className ) {
 		MODULES.setProperty( name , className );
 	}
 	
@@ -49,7 +58,7 @@ public class VersionUtils {
 	 * 
 	 * @return	the module list
 	 */
-	public synchronized static Properties getModuleList() {
+	public static synchronized Properties getModuleList() {
 		return MODULES;
 	}
 	
@@ -65,18 +74,25 @@ public class VersionUtils {
 		if ( type != null ) {
 			try {
 				Object o = ClassHelper.newInstance( type );
-				try {
-					ModuleVersion vc = (ModuleVersion) o;
-					versionString = vc.getName()+" "+vc.getVersion()+" "+vc.getDate();
-				} catch ( Throwable t2 ) {
-					versionString = "[03] Impossible to find module version";
-				}
+				versionString = findVersionString(o);
 			} catch (Exception t1) {
 				versionString = "[02] Class module isn't loaded : ("+type+") - "+t1;
-				t1.printStackTrace();
+				log.warn( versionString, t1 );
 			}	
 		} else {
-			versionString = "[01] Module does not exist";
+			versionString = CODE_01_NOT_FOUND;
+		}
+		return versionString;
+	}
+	
+	private static String findVersionString( Object o ) {
+		String versionString = null;
+		try {
+			ModuleVersion vc = (ModuleVersion) o;
+			versionString = vc.getName()+" "+vc.getVersion()+" "+vc.getDate();
+		} catch ( Exception | NoClassDefFoundError t2 ) {
+			versionString = CODE_03_NO_CONVERT;
+			log.warn( versionString, t2 );
 		}
 		return versionString;
 	}
